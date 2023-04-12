@@ -1,0 +1,14 @@
+//
+// Created by Admin on 12/04/2023.
+//
+
+#ifndef OPENGL_GENERATIONTERRAIN_RENDERER_HPP
+#define OPENGL_GENERATIONTERRAIN_RENDERER_HPP
+
+
+class Renderer {
+
+};
+
+
+#endif //OPENGL_GENERATIONTERRAIN_RENDERER_HPP
