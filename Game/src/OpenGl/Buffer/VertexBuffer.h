@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <memory>
 #include <gl/glew.h>
-
 #include "Buffer.h"
 
 class VertexBuffer

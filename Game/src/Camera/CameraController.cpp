@@ -15,21 +15,24 @@ CameraController::CameraController(float FOV, float aspectRatio, float near, flo
 
 void CameraController::OnUpdate(float ts)
 {
+	auto translationSpeed = m_CameraTranslationSpeed * ts;
+	if (Input::IsKeyPressed(KeyCode::LeftShift))
+		translationSpeed *= 10;
 	if (Input::IsKeyPressed(KeyCode::A))
 	{
-		m_Camera.SetPosition(m_Camera.GetPosition() - glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * m_CameraTranslationSpeed * ts);
+		m_Camera.SetPosition(m_Camera.GetPosition() - glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * translationSpeed * ts);
 	}
 	if (Input::IsKeyPressed(KeyCode::D))
 	{
-		m_Camera.SetPosition(m_Camera.GetPosition() + glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * m_CameraTranslationSpeed * ts);
+		m_Camera.SetPosition(m_Camera.GetPosition() + glm::normalize(glm::cross(m_Camera.GetFront(), m_Camera.GetUp())) * translationSpeed * ts);
 	}
 	if (Input::IsKeyPressed(KeyCode::W))
 	{
-		m_Camera.SetPosition(m_Camera.GetPosition() + m_CameraTranslationSpeed * ts * m_Camera.GetFront());
+		m_Camera.SetPosition(m_Camera.GetPosition() + translationSpeed * ts * m_Camera.GetFront());
 	}
 	if (Input::IsKeyPressed(KeyCode::S))
 	{
-		m_Camera.SetPosition(m_Camera.GetPosition() - m_CameraTranslationSpeed * ts * m_Camera.GetFront());
+		m_Camera.SetPosition(m_Camera.GetPosition() - translationSpeed * ts * m_Camera.GetFront());
 	}
 
 	if (Input::IsKeyPressed(KeyCode::Q))

@@ -18,7 +18,10 @@ public:
 
 	bool OnMouseMouved(MouseMovedEvent& e);
 
-	[[nodiscard]] const Camera& GetCamera() const { return m_Camera; }
+	[[nodiscard]] Camera& GetCamera() { return m_Camera; }
+
+	[[nodiscard]] float GetCameraTranslationSpeed() const { return m_CameraTranslationSpeed; }
+	void SetCameraTranslationSpeed(float speed) { m_CameraTranslationSpeed = speed; }
 
 private:
 	bool OnMouseScrolled(MouseScrolledEvent& e);
@@ -26,5 +29,5 @@ private:
 
 	Camera m_Camera;
 
-	float m_CameraTranslationSpeed = 0.1f, m_CameraRotationSpeed = 1.f;
+	float m_CameraTranslationSpeed = 10.f, m_CameraRotationSpeed = 2.f;
 };
