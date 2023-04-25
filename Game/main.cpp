@@ -9,11 +9,12 @@
 
 #include "src/Camera/CameraController.h"
 #include "src/OpenGl/Renderer/RendererAPI.h"
+
+#include "../ProceduralGeneration/PerlinNoise/PerlinGeneration.hpp"
 #include <glm/gtc/noise.hpp>
 #include "src/Terrain/HeightMap/HeightMap.h"
 #include "src/Terrain/Terrain.h"
 #include "src/Terrain/Erosion/Erosion.h"
-
 
 static const NoiseSettings DesertConfig = {
 	.frequency = 3.f,
@@ -37,20 +38,30 @@ public:
 
 		RegenerateMap(true);
 
-		m_ShaderLibrary.Load("MapShader", "./assets/shaders/vertexShader.glsl", "./assets/shaders/fragmentShader.glsl");
+        m_ShaderLibrary.Load("MapShader", "./assets/shaders/vertexShader.glsl", "./assets/shaders/fragmentShader.glsl");
 
-		auto shader = m_ShaderLibrary.Get("MapShader");
+        auto shader = m_ShaderLibrary.Get("MapShader");
 
-		shader->Bind();
-	}
+        shader->Bind();
 
-	~TestLayer() override = default;
+    }
+
+    ~TestLayer() override = default;
 
 	void OnAttach() override {}
 	void OnDetach() override {}
 
 	void OnUpdate(float dt) override
 	{
+        if(lauchRegenMap)
+        {
+            std::vector<float> vertices;
+            std::vector<uint32_t> indices;
+            RegenerateMap(vertices, indices);
+            BindMap(vertices, indices);
+            lauchRegenMap = false;
+        }
+
 		m_cameraController.OnUpdate(dt);
 
 		RendererAPI::Get()->SetClearColor({ 0.2f, 0.3f, 0.3f, 1.0f });
@@ -66,12 +77,10 @@ public:
 		Renderer::Submit(textureShader, m_vertexArray, model);
 
 		Renderer::EndScene();
-
 	}
 
 	void OnImGuiRender() override
 	{
-
 		auto io = ImGui::GetIO();
 
 		bool mapHasBeenUpdated = false;
@@ -186,7 +195,6 @@ public:
 						ImGui::EndTabBar();
 					}
 
-
 					ImGui::EndTabItem();
 				}
 
@@ -288,9 +296,6 @@ public:
 					ImGui::EndTabItem();
 				}
 
-				
-
-
 				ImGui::EndTabBar();
 			}
 
@@ -351,6 +356,22 @@ public:
 
 
 private:
+    void RegenerateMap(std::vector<float> &vertices, std::vector<uint32_t> &indices) const {
+		const size_t vertexCount = m_mapSize * m_mapSize;
+        vertices.resize(vertexCount * 3);
+        indices.resize(vertexCount * 6);
+
+        PerlinGeneration::GenerateHeightMap(vertices, indices, m_mapSize, m_noiseSettings);
+    }
+
+    void BindMap(std::vector<float> &vertices, std::vector<uint32_t> &indices) {
+        auto vertexArray = m_vertexArray.get();
+        vertexArray->GetVertexBuffers()[0]->SetData(vertices.data(), sizeof(float) * vertices.size());
+        vertexArray->GetIndexBuffer()->SetData(indices.data(), sizeof(uint32_t) * indices.size());
+    }
+	
+    bool lauchRegenMap = false;
+
 	CameraController m_cameraController;
 
 	std::shared_ptr<VertexArray> m_vertexArray;
