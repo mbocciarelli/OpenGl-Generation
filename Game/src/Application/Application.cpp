@@ -33,13 +33,12 @@ Application::~Application()
 
 void Application::Run()
 {
-	const auto time = static_cast<float>(glfwGetTime());
-	const float dt = time - m_LastFrameTime;
-	m_LastFrameTime = time;
-
-
 	while (m_isRunning)
 	{
+		const auto time = static_cast<float>(glfwGetTime());
+		const float dt = time - m_LastFrameTime;
+		m_LastFrameTime = time;
+
 		for (Layer* layer : m_LayerStack)
 			layer->OnUpdate(dt);
 

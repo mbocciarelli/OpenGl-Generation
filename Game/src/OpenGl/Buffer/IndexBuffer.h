@@ -12,8 +12,6 @@ public:
 		// Binding with GL_ARRAY_BUFFER allows the data to be loaded regardless of VAO state. 
 		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
 		glBufferData(GL_ARRAY_BUFFER, count * sizeof(uint32_t), indices, GL_STATIC_DRAW);
-
-
 	}
 
 	~IndexBuffer()
@@ -29,6 +27,13 @@ public:
 	void Unbind() const
 	{
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	}
+
+	void SetData(uint32_t* indices, uint32_t count)
+	{
+		m_Count = count;
+		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
+		glBufferData(GL_ARRAY_BUFFER, count * sizeof(uint32_t), indices, GL_STATIC_DRAW);
 	}
 
 	uint32_t GetCount() const { return m_Count; }

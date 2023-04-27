@@ -81,9 +81,9 @@ public:
 
 	[[nodiscard]] float GetPitch() const { return m_pitch; }
 
-	[[nodiscard]] float GetFarClip() const { return m_far; }
+	[[nodiscard]] float GetFar() const { return m_far; }
 
-	[[nodiscard]] float GetNearClip() const { return m_near; }
+	[[nodiscard]] float GetNear() const { return m_near; }
 
 	[[nodiscard]] float GetFOV() const { return m_FOV; }
 

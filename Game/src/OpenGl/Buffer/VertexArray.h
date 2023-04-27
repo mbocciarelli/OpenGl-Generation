@@ -114,6 +114,7 @@ public:
 
 		m_VertexBuffers.push_back(vertexBuffer);
 	}
+
 	void SetIndexBuffer(const std::shared_ptr<IndexBuffer>& indexBuffer) {
 
 		glBindVertexArray(m_id);
