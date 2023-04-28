@@ -3,6 +3,8 @@
 
 #include "gl/glew.h"
 #include "libs/noise/PerlinNoise.h"
+#include "../../libs/noise/PerlinNoise.h"
+#include "../Chunk.h"
 
 struct NoiseSettings
 {
@@ -26,6 +28,19 @@ struct NoiseSettings
 	int terraceCount = 5;
 };
 
+static const NoiseSettings DesertConfig = {
+        .x = 0.f,
+        .y = 0.f,
+        .frequency = 3.f,
+        .octaves = 3,
+        .persistence = 0.38f,
+        .minHeight = 0.f,
+        .maxHeight = 200.f,
+        .exponent = 1.f,
+        .seed = 0,
+        .ridgeNoise = true
+};
+
 template<typename Type>
 Type Map(Type val, Type in_min, Type in_max, Type out_min, Type out_max)
 {
@@ -41,17 +56,25 @@ public:
 
 	HeightMap() = default;
 	HeightMap(int mapWidth, int mapHeight, NoiseSettings& settings): mapWidth(mapWidth), mapHeight(mapHeight)
+	HeightMap(const Chunk chunk, NoiseSettings& settings)
 	{
-		resize(mapWidth * mapHeight);
+		resize(chunk.m_width * chunk.m_height);
 		const siv::PerlinNoise perlin(settings.seed);
 		const float f = settings.frequency * 0.001f;
-		for (int z = 0; z < mapHeight; ++z)
+
+        const float startX = chunk.m_x * chunk.m_width + chunk.m_x * -1.f;
+        const float startZ = chunk.m_z * chunk.m_height + chunk.m_z * -1.f;
+
+		for (int z = 0; z < chunk.m_height; ++z)
 		{
-			for (int x = 0; x < mapWidth; ++x)
+			for (int x = 0; x < chunk.m_width; ++x)
 			{
-				size_t index = x + z * mapWidth;
+                auto x1 = x + startX;
+                auto z1 = z + startZ;
+
+				size_t index = x + z * chunk.m_width;
 				float height;
-				float noise = perlin.octave2D_01((float)(x * f), (float)(z * f), settings.octaves, settings.persistence);
+				float noise = perlin.octave2D_01((float)(x1 * f), (float)(z1 * f), settings.octaves, settings.persistence);
 
 				if (settings.ridgeNoise) noise = Ridgenoise(noise);
 				//if (settings.terraces) height = terraceNoise(noise, settings.terraceCount);

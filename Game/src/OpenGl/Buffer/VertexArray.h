@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <GL/glew.h>
+#include <mutex>
 
 #include "IndexBuffer.h"
 #include "VertexBuffer.h"

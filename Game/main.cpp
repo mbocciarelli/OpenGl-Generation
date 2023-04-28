@@ -12,9 +12,11 @@
 
 #include "../ProceduralGeneration/PerlinNoise/PerlinGeneration.hpp"
 #include <glm/gtc/noise.hpp>
-#include "src/Terrain/HeightMap/HeightMap.h"
-#include "src/Terrain/Terrain.h"
-#include "src/Terrain/Erosion/Erosion.h"
+#include "../ProceduralGeneration/Terrain/HeightMap/HeightMap.h"
+#include "../ProceduralGeneration/Terrain/Terrain.h"
+#include "../ProceduralGeneration/Terrain/Erosion/Erosion.h"
+#include <queue>
+#include <thread>
 
 static const NoiseSettings DesertConfig = {
 	.frequency = 3.f,
@@ -27,7 +29,6 @@ static const NoiseSettings DesertConfig = {
 	.ridgeNoise = true
 };
 
-
 class TestLayer : public Layer
 {
 public:
@@ -36,7 +37,45 @@ public:
 		m_cameraController.GetCamera().SetPosition({ -37.5531f, 71.7751f, 6.45213f });
 		m_cameraController.GetCamera().SetYaw(33.f);
 
-		RegenerateMap(true);
+        std::queue<Chunk> m_queueChunks;
+        std::vector<std::thread> m_threads;
+
+        for (int x = 0; x < m_chunkSizeX; ++x) {
+            for (int z = 0; z < m_chunkSizeZ; ++z) {
+                Chunk chunk { x, z, m_mapSize, m_mapSize };
+                m_queueChunks.push(chunk);
+            }
+        }
+
+        for(int i = 0; i < nbrThreads; ++i)
+        {
+            m_threads.emplace_back([&](){
+                while(!m_queueChunks.empty())
+                {
+                    m_mutex.lock();
+                    auto chunk = m_queueChunks.front();
+                    m_queueChunks.pop();
+                    m_mutex.unlock();
+
+                    std::cout << "Generating chunk: " << chunk.m_x << " " << chunk.m_z << std::endl;
+                    RegenerateMap(chunk, chunk.m_vertices, chunk.m_indices, true);
+
+                    m_mutex.lock();
+                    m_chunks.push_back(chunk);
+                    m_mutex.unlock();
+                }
+            });
+        }
+
+        for(auto& thread : m_threads)
+        {
+            thread.join();
+        }
+
+        for(auto& chunk : m_chunks)
+        {
+            RegenerationVerticesIndices(chunk, chunk.m_vertices, chunk.m_indices, true);
+        }
 
         m_ShaderLibrary.Load("MapShader", "./assets/shaders/vertexShader.glsl", "./assets/shaders/fragmentShader.glsl");
 
@@ -53,15 +92,6 @@ public:
 
 	void OnUpdate(float dt) override
 	{
-        if(lauchRegenMap)
-        {
-            std::vector<float> vertices;
-            std::vector<uint32_t> indices;
-            RegenerateMap(vertices, indices);
-            BindMap(vertices, indices);
-            lauchRegenMap = false;
-        }
-
 		m_cameraController.OnUpdate(dt);
 
 		RendererAPI::Get()->SetClearColor({ 0.2f, 0.3f, 0.3f, 1.0f });
@@ -74,7 +104,11 @@ public:
 		textureShader->SetFloat("u_maxHeight", m_continalnessNoiseSettings.maxHeight);
 
 		glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(0.f), glm::vec3(0.5f, 1.0f, 0.0f));
-		Renderer::Submit(textureShader, m_vertexArray, model);
+
+        for(auto vertexArray : m_vertexArray)
+        {
+            Renderer::Submit(textureShader, vertexArray, model);
+        }
 
 		Renderer::EndScene();
 	}
@@ -305,6 +339,39 @@ public:
 
 
 		if (m_generateMap && mapHasBeenUpdated) RegenerateMap(sizeHasChanged);
+		// if (mapHasBeenUpdated)
+        // {
+        //     /*std::queue<Chunk*> m_queueChunks;
+        //     std::vector<std::thread> m_threads;*/
+
+        //     for(auto& chunk : m_chunks) {
+        //         //m_queueChunks.push(&chunk);
+        //         RegenerateMap(chunk, chunk.m_vertices, chunk.m_indices, sizeHasChanged);
+        //         RegenerationVerticesIndices(chunk, chunk.m_vertices, chunk.m_indices, sizeHasChanged);
+        //     }
+
+        //     /*for(int i = 0; i < nbrThreads; ++i)
+        //     {
+        //         m_threads.emplace_back([&](){
+        //             while(!m_queueChunks.empty())
+        //             {
+        //                 m_mutex.lock();
+        //                 auto chunk = *m_queueChunks.front();
+        //                 m_queueChunks.pop();
+        //                 m_mutex.unlock();
+
+        //                 std::cout << "Generating chunk: " << chunk.m_x << " " << chunk.m_z << std::endl;
+        //                 RegenerateMap(chunk, chunk.m_vertices, chunk.m_indices, sizeHasChanged);
+        //             }
+        //         });
+        //     }
+
+        //     for(auto& thread : m_threads)
+        //         thread.join();
+
+        //     for(auto& chunk : m_chunks)
+        //         RegenerationVerticesIndices(chunk, chunk.m_vertices, chunk.m_indices, sizeHasChanged);*/
+        // }
 
 	}
 
@@ -314,9 +381,10 @@ public:
 	}
 
 
-	void RegenerateMap(bool sizeHasChanged)
+	void RegenerateMap(Chunk& chunk, std::vector<float>& vertices, std::vector<uint32_t>& indices, bool sizeHasChanged)
 	{
-		Terrain terrain { m_mapSize, m_mapSize, m_continalnessNoiseSettings };
+		//Terrain terrain { m_mapSize, m_mapSize, m_continalnessNoiseSettings };
+		Terrain terrain { chunk , m_noiseSettings };
 
 		auto& heightMap = terrain.GetHeightMap();
 		m_heightMapTest = heightMap;
@@ -325,6 +393,7 @@ public:
 		erosion.Erode(heightMap, m_mapSize, m_erosionIterations);
 
 		terrain.SetHeightMap(heightMap);
+		///
 		terrain.GenerateVertices(m_mapSize, m_mapSize, m_continalnessNoiseSettings);
 		auto& vertices = terrain.GetVertices();
 		auto& indices = terrain.GetIndices();
@@ -351,9 +420,43 @@ public:
 			m_vertexArray->SetIndexBuffer(indexBuffer);
 		}
 
-		
+		////
+		terrain.GenerateVertices(chunk, m_noiseSettings);
+		vertices = terrain.GetVertices();
+		indices = terrain.GetIndices();
 	}
 
+    void RegenerationVerticesIndices(Chunk& chunk, std::vector<float>& vertices, std::vector<uint32_t>& indices, bool sizeHasChanged)
+    {
+        if (!sizeHasChanged) {
+
+            if(chunk.m_vertexArrayIndex == -1)
+                throw std::runtime_error("Chunk has no vertex array index");
+
+            auto& vertexBuffer = m_vertexArray[chunk.m_vertexArrayIndex]->GetVertexBuffers()[0];
+            vertexBuffer->SetData(vertices.data(), sizeof(float) * vertices.size());
+
+            auto& indexBuffer = m_vertexArray[chunk.m_vertexArrayIndex]->GetIndexBuffer();
+            indexBuffer->SetData(indices.data(), indices.size());
+
+        }
+        else
+        {
+            auto vertexArray = VertexArray::Create();
+            m_vertexArray.push_back(vertexArray);
+            chunk.m_vertexArrayIndex = m_vertexArray.size() - 1;
+
+            const auto vertexBuffer = VertexBuffer::Create(vertices.data(), sizeof(float) * vertices.size());
+            const BufferLayout layout = {
+                    { ShaderDataType::Float3, "a_Position" },
+            };
+            vertexBuffer->SetLayout(layout);
+            vertexArray->AddVertexBuffer(vertexBuffer);
+
+            const auto indexBuffer = IndexBuffer::Create(indices.data(), indices.size());
+            vertexArray->SetIndexBuffer(indexBuffer);
+        }
+    }
 
 private:
     void RegenerateMap(std::vector<float> &vertices, std::vector<uint32_t> &indices) const {
@@ -371,10 +474,12 @@ private:
     }
 	
     bool lauchRegenMap = false;
+    std::mutex m_mutex;
 
 	CameraController m_cameraController;
 
-	std::shared_ptr<VertexArray> m_vertexArray;
+    std::vector<Chunk> m_chunks;
+	std::vector<std::shared_ptr<VertexArray>> m_vertexArray;
 	std::shared_ptr<VertexArray> m_SquareVA;
 	std::shared_ptr<Texture2D> m_texture;
 	ShaderLibrary m_ShaderLibrary;
@@ -382,13 +487,17 @@ private:
 	NoiseSettings m_continalnessNoiseSettings;
 	NoiseSettings m_erosionNoiseSettings;
 	ErosionSettings m_erosionSettings;
-	int m_erosionIterations = 100000;
+	int m_erosionIterations = 0;
 
 	int m_mapSize = 100;
 	bool m_generateMap = false;
 
 	HeightMap m_heightMapTest;
 
+    int m_chunkSizeX = 75;
+    int m_chunkSizeZ = 75;
+
+    int nbrThreads = 6;
 };
 
 
