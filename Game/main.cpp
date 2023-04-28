@@ -449,10 +449,10 @@ private:
 
 	HeightMap m_heightMapTest;
 
-    int m_chunkSize = 10;
+    int m_chunkSize = 16;
 
-	int m_nbChunksX = 3;
-	int m_nbChunksZ = 3;
+	int m_nbChunksX = 20;
+	int m_nbChunksZ = 20;
 
 };
 

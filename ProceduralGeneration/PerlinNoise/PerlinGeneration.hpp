@@ -13,12 +13,12 @@ struct NoiseSettings
     // Define a vector to hold all of the row data
     std::vector<RowData> splinePoints;
 
-    float frequency = 2.f;
+    float frequency = 4.5f;
     int octaves = 5;
     float persistence = 0.5f;
 
-    float exponent = 3.f;
-    int seed = 5203;
+    float exponent = 1.f;
+    int seed = 0;
 
     float minHeight = 0.f;
     float maxHeight = 200.f;
