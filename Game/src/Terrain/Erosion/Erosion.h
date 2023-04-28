@@ -11,6 +11,7 @@ struct HeightAndGradient
 
 struct ErosionSettings
 {
+	bool enable = false;
 	int seed = 1;
 	int erosionRadius = 3;
 	float inertia = 0.05f;
@@ -40,6 +41,7 @@ private:
 	void InitializeBrushIndices(int mapSize, int radius);
 
 private:
+	bool m_enable;
 	int m_seed;
 	int m_erosionRadius;
 	float m_inertia;

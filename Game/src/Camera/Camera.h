@@ -43,17 +43,12 @@ public:
 	void SetPosition (const glm::vec3& position)
 	{
 		m_position = position;
-		std::cout << "Camera position: " << m_position.x << ", " << m_position.y << ", " << m_position.z << std::endl;
 		RecalculateView();
 	}
 
 	void SetYaw(const float yaw)
 	{
-		std::cout << "Camera m_yaw: " << m_yaw << std::endl;
-
 		m_yaw = yaw;
-		std::cout << "Camera m_yaw: " << m_yaw << std::endl;
-
 		RecalculateFront();
 		RecalculateView();
 	}

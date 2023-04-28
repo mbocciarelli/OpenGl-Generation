@@ -16,8 +16,6 @@
 
 
 static const NoiseSettings DesertConfig = {
-	.x = 0.f,
-	.y = 0.f,
 	.frequency = 3.f,
 	.octaves = 3,
 	.persistence = 0.38f,
@@ -61,8 +59,8 @@ public:
 		Renderer::BeginScene(m_cameraController.GetCamera());
 
 		const auto textureShader = m_ShaderLibrary.Get("MapShader");
-		textureShader->SetFloat("u_minHeight", m_noiseSettings.minHeight);
-		textureShader->SetFloat("u_maxHeight", m_noiseSettings.maxHeight);
+		textureShader->SetFloat("u_minHeight", m_continalnessNoiseSettings.minHeight);
+		textureShader->SetFloat("u_maxHeight", m_continalnessNoiseSettings.maxHeight);
 
 		glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(0.f), glm::vec3(0.5f, 1.0f, 0.0f));
 		Renderer::Submit(textureShader, m_vertexArray, model);
@@ -73,95 +71,235 @@ public:
 
 	void OnImGuiRender() override
 	{
+
+		auto io = ImGui::GetIO();
+
 		bool mapHasBeenUpdated = false;
 		bool sizeHasChanged = false;
 
 		{
-			ImGui::Begin("Map");
+			ImGui::Begin("Debug");
 
-			mapHasBeenUpdated |= ImGui::SliderInt("Size", &m_mapSize, 10.f, 10000.0f);
+			if (ImGui::BeginTabBar("MyTabBar")) {
 
-			mapHasBeenUpdated |= ImGui::Checkbox("Add Ridge Noise", &m_noiseSettings.ridgeNoise);
-			mapHasBeenUpdated |= ImGui::Checkbox("Add Terraces", &m_noiseSettings.terraces);
+				if (ImGui::BeginTabItem("FPS")) {
+					ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+					ImGui::EndTabItem();
+				}
 
-			sizeHasChanged |= mapHasBeenUpdated;
-			//ImGui::SliderInt("Height", &m_height, 10.f, 10000.0f);
+				if (ImGui::BeginTabItem("CAMERA")) {
+					float speed = m_cameraController.GetCameraTranslationSpeed();
+					ImGui::SliderFloat("Speed", &speed, 0.f, 30000.0f);
+					m_cameraController.SetCameraTranslationSpeed(speed);
 
-			ImGui::End();
-		}
+					float far = m_cameraController.GetCamera().GetFar();
+					ImGui::SliderFloat("Distance", &far, 0.f, 10000.0f);
+					m_cameraController.GetCamera().SetFarClip(far);
 
-		{
-			ImGui::Begin("Perlin Noise Generator Settings");
-			mapHasBeenUpdated |= ImGui::SliderFloat("Frequency", &m_noiseSettings.frequency, 0.0f, 10.0f);
-			mapHasBeenUpdated |= ImGui::SliderInt("Octaves", &m_noiseSettings.octaves, 1, 10);
-			mapHasBeenUpdated |= ImGui::SliderFloat("Persistence", &m_noiseSettings.persistence, 0.1f, 1.0f);
-			mapHasBeenUpdated |= ImGui::SliderInt("Seed", &m_noiseSettings.seed, 0, 100000);
-			mapHasBeenUpdated |= ImGui::SliderFloat("Exponent", &m_noiseSettings.exponent,	0.8f, 10.0f);
+					ImGui::EndTabItem();
+				}
 
-			mapHasBeenUpdated |= ImGui::SliderFloat("min height", &m_noiseSettings.minHeight, -100.f, 300.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("max height", &m_noiseSettings.maxHeight, -100.f, 300.0f);
+				if (ImGui::BeginTabItem("DEBUG")) {
+					ImGui::EndTabItem();
+				}
 
-			if (m_noiseSettings.terraces)
-			{
-				mapHasBeenUpdated |= ImGui::SliderInt("Terraces", &m_noiseSettings.terraceCount, 1, 30);
+				if (ImGui::BeginTabItem("MAP OPTIONS")) {
+
+					ImGui::Checkbox("Generate map", &m_generateMap);
+
+					sizeHasChanged |= ImGui::SliderInt("Map Size", &m_mapSize, 10.f, 5000.0f);
+					mapHasBeenUpdated |= sizeHasChanged;
+					mapHasBeenUpdated |= ImGui::Checkbox("Add Erosion", &m_erosionSettings.enable);
+
+					ImGui::EndTabItem();
+				}
+
+				if (ImGui::BeginTabItem("Continentalness")) {
+					if (ImGui::BeginTabBar("ContinentalnessBar")) {
+						if (ImGui::BeginTabItem("General options")) {
+
+							mapHasBeenUpdated |= ImGui::SliderFloat("min height", &m_continalnessNoiseSettings.minHeight, 0, 256.f);
+							mapHasBeenUpdated |= ImGui::SliderFloat("max height", &m_continalnessNoiseSettings.maxHeight, 0, 256.f);
+
+							mapHasBeenUpdated |= ImGui::Checkbox("Add Ridge Noise", &m_continalnessNoiseSettings.ridgeNoise);
+
+							ImGui::EndTabItem();
+						}
+
+						if (ImGui::BeginTabItem("Continentalness options")) {
+
+							mapHasBeenUpdated |= ImGui::SliderFloat("Frequency", &m_continalnessNoiseSettings.frequency, 0.0f, 10.0f);
+							mapHasBeenUpdated |= ImGui::SliderInt("Octaves", &m_continalnessNoiseSettings.octaves, 1, 10);
+							mapHasBeenUpdated |= ImGui::SliderFloat("Persistence", &m_continalnessNoiseSettings.persistence, 0.1f, 1.0f);
+							mapHasBeenUpdated |= ImGui::SliderInt("Seed", &m_continalnessNoiseSettings.seed, 0, 100000);
+							mapHasBeenUpdated |= ImGui::SliderFloat("Exponent", &m_continalnessNoiseSettings.exponent, 0.8f, 10.0f);
+
+							ImGui::EndTabItem();
+						}
+
+						if (ImGui::BeginTabItem("Continentalness Noise Map Settings")) {
+
+							ImGui::Columns(2, "ContinentalnessTable");
+							ImGui::Text("Continentalness");
+							ImGui::NextColumn();
+							ImGui::Text("Height");
+							ImGui::NextColumn();
+
+							// Draw the table rows
+							for (int i = 0; i < m_continalnessNoiseSettings.splinePoints.size(); i++) {
+								ImGui::PushID(i);
+								ImGui::PushItemWidth(-1);
+
+								// Draw the noise input box for this row
+								ImGui::InputFloat("##Continentalness", &m_continalnessNoiseSettings.splinePoints[i].value);
+
+								ImGui::PopItemWidth();
+								ImGui::NextColumn();
+
+								ImGui::PushItemWidth(-1);
+
+								// Draw the height input box for this row
+								ImGui::InputFloat("##Height", &m_continalnessNoiseSettings.splinePoints[i].height);
+
+								ImGui::PopItemWidth();
+								ImGui::NextColumn();
+
+								ImGui::PopID();
+							}
+
+							// Add a button to add a new row
+							if (ImGui::Button("Add Row")) {
+								// Create a new row and add it to the vector
+								NoiseSettings::RowData newRow;
+								m_continalnessNoiseSettings.splinePoints.push_back(newRow);
+							}
+							ImGui::EndTabItem();
+						}
+
+						if (ImGui::BeginTabItem("Continentalness Noise Image"))
+						{
+							if (m_heightMapTest.textureId != 0)
+								ImGui::Image((void*)(intptr_t)m_heightMapTest.textureId, ImVec2(m_heightMapTest.mapWidth, m_heightMapTest.mapHeight));
+							ImGui::EndTabItem();
+						}
+
+						ImGui::EndTabBar();
+					}
+
+
+					ImGui::EndTabItem();
+				}
+
+				if (ImGui::BeginTabItem("Erosion")) {
+					if (ImGui::BeginTabBar("ErosionBar")) {
+						if (ImGui::BeginTabItem("General options")) {
+
+							mapHasBeenUpdated |= ImGui::SliderFloat("min height", &m_erosionNoiseSettings.minHeight, 0, 256.f);
+							mapHasBeenUpdated |= ImGui::SliderFloat("max height", &m_erosionNoiseSettings.maxHeight, 0, 256.f);
+
+							mapHasBeenUpdated |= ImGui::Checkbox("Add Ridge Noise", &m_erosionNoiseSettings.ridgeNoise);
+
+							ImGui::EndTabItem();
+						}
+
+						if (ImGui::BeginTabItem("Erosion options")) {
+
+							mapHasBeenUpdated |= ImGui::SliderFloat("Frequency", &m_erosionNoiseSettings.frequency, 0.0f, 10.0f);
+							mapHasBeenUpdated |= ImGui::SliderInt("Octaves", &m_erosionNoiseSettings.octaves, 1, 10);
+							mapHasBeenUpdated |= ImGui::SliderFloat("Persistence", &m_erosionNoiseSettings.persistence, 0.1f, 1.0f);
+							mapHasBeenUpdated |= ImGui::SliderInt("Seed", &m_erosionNoiseSettings.seed, 0, 100000);
+							mapHasBeenUpdated |= ImGui::SliderFloat("Exponent", &m_erosionNoiseSettings.exponent, 0.8f, 10.0f);
+
+							ImGui::EndTabItem();
+						}
+
+						if (ImGui::BeginTabItem("Erosion Noise Map Settings")) {
+
+							ImGui::Columns(2, "ErosionTable");
+							ImGui::Text("Erosion");
+							ImGui::NextColumn();
+							ImGui::Text("Height");
+							ImGui::NextColumn();
+
+							// Draw the table rows
+							for (int i = 0; i < m_erosionNoiseSettings.splinePoints.size(); i++) {
+								ImGui::PushID(i);
+								ImGui::PushItemWidth(-1);
+
+								// Draw the noise input box for this row
+								ImGui::InputFloat("##Erosion", &m_erosionNoiseSettings.splinePoints[i].value);
+
+								ImGui::PopItemWidth();
+								ImGui::NextColumn();
+
+								ImGui::PushItemWidth(-1);
+
+								// Draw the height input box for this row
+								ImGui::InputFloat("##Height", &m_erosionNoiseSettings.splinePoints[i].height);
+
+								ImGui::PopItemWidth();
+								ImGui::NextColumn();
+
+								ImGui::PopID();
+							}
+
+							// Add a button to add a new row
+							if (ImGui::Button("Add Row")) {
+								// Create a new row and add it to the vector
+								NoiseSettings::RowData newRow;
+								m_erosionNoiseSettings.splinePoints.push_back(newRow);
+							}
+							ImGui::EndTabItem();
+						}
+
+						ImGui::EndTabBar();
+					}
+
+
+					ImGui::EndTabItem();
+				}
+
+
+				if (m_erosionSettings.enable && ImGui::BeginTabItem("EROSION NOISE")) {
+					mapHasBeenUpdated |= ImGui::SliderInt("Erosion Iterations", &m_erosionIterations, 0, 500000);
+
+					mapHasBeenUpdated |= ImGui::SliderInt("seed", &m_erosionSettings.seed, 0, 100000);
+					mapHasBeenUpdated |= ImGui::SliderInt("erosionRadius", &m_erosionSettings.erosionRadius, 1, 7);
+					mapHasBeenUpdated |= ImGui::SliderFloat("Inertia", &m_erosionSettings.inertia, 0.0f, 1.0f);
+					mapHasBeenUpdated |= ImGui::SliderFloat("sedimentCapacityFactor", &m_erosionSettings.sedimentCapacityFactor, 0.0f, 10.0f);
+					mapHasBeenUpdated |= ImGui::SliderFloat("minSedimentCapacity", &m_erosionSettings.minSedimentCapacity, 0.0f, 1.0f);
+					mapHasBeenUpdated |= ImGui::SliderFloat("erodeSpeed", &m_erosionSettings.erodeSpeed, 0.0f, 1.0f);
+					mapHasBeenUpdated |= ImGui::SliderFloat("depositSpeed", &m_erosionSettings.depositSpeed, 0.0f, 1.0f);
+					mapHasBeenUpdated |= ImGui::SliderFloat("evaporateSpeed", &m_erosionSettings.evaporateSpeed, 0.0f, 1.0f);
+					mapHasBeenUpdated |= ImGui::SliderFloat("gravity", &m_erosionSettings.gravity, 1.0f, 10.0f);
+					mapHasBeenUpdated |= ImGui::SliderInt("maxDropletLifetime", &m_erosionSettings.maxDropletLifetime, 1, 100);
+					mapHasBeenUpdated |= ImGui::SliderFloat("initialWaterVolume", &m_erosionSettings.initialWaterVolume, 1.0f, 10.0f);
+					mapHasBeenUpdated |= ImGui::SliderFloat("initialSpeed", &m_erosionSettings.initialSpeed, 0.0f, 3.0f);
+
+					ImGui::EndTabItem();
+				}
+
+				if (ImGui::BeginTabItem("PRE-CONFIG")) {
+					if (ImGui::Button("Desert Config"))
+					{
+						m_continalnessNoiseSettings = DesertConfig;
+						mapHasBeenUpdated = true;
+					}
+					ImGui::EndTabItem();
+				}
+
+				
+
+
+				ImGui::EndTabBar();
 			}
 
-
-			ImGui::End();
-		}
-
-		{
-			ImGui::Begin("Erosion Settings");
-
-			mapHasBeenUpdated |= ImGui::SliderInt("Erosion Iterations", &m_erosionIterations, 0, 500000);
-
-			mapHasBeenUpdated |= ImGui::SliderInt("seed", &m_erosionSettings.seed, 0, 100000);
-			mapHasBeenUpdated |= ImGui::SliderInt("erosionRadius", &m_erosionSettings.erosionRadius, 1, 7);
-			mapHasBeenUpdated |= ImGui::SliderFloat("Inertia", &m_erosionSettings.inertia, 0.0f, 1.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("sedimentCapacityFactor", &m_erosionSettings.sedimentCapacityFactor, 0.0f, 10.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("minSedimentCapacity", &m_erosionSettings.minSedimentCapacity, 0.0f, 1.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("erodeSpeed", &m_erosionSettings.erodeSpeed, 0.0f, 1.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("depositSpeed", &m_erosionSettings.depositSpeed, 0.0f, 1.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("evaporateSpeed", &m_erosionSettings.evaporateSpeed, 0.0f, 1.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("gravity", &m_erosionSettings.gravity, 1.0f, 10.0f);
-			mapHasBeenUpdated |= ImGui::SliderInt("maxDropletLifetime", &m_erosionSettings.maxDropletLifetime, 1, 100);
-			mapHasBeenUpdated |= ImGui::SliderFloat("initialWaterVolume", &m_erosionSettings.initialWaterVolume, 1.0f, 10.0f);
-			mapHasBeenUpdated |= ImGui::SliderFloat("initialSpeed", &m_erosionSettings.initialSpeed, 0.0f, 3.0f);
-
 			ImGui::End();
 
 		}
 
 
-		{
-			ImGui::Begin("Camera");
-
-			float speed = m_cameraController.GetCameraTranslationSpeed();
-			ImGui::SliderFloat("Speed", &speed, 0.f, 30000.0f);
-			m_cameraController.SetCameraTranslationSpeed(speed);
-
-
-			float far = m_cameraController.GetCamera().GetFar();
-			ImGui::SliderFloat("Distance", &far, 0.f, 10000.0f);
-			m_cameraController.GetCamera().SetFarClip(far);
-
-
-			ImGui::End();
-		}
-
-		{
-			ImGui::Begin("PRE CONFIG");
-
-			if (ImGui::Button("Desert Config"))
-			{
-				m_noiseSettings = DesertConfig;
-				mapHasBeenUpdated = true;
-			}
-
-			ImGui::End();
-		}
-
-		if (mapHasBeenUpdated) RegenerateMap(sizeHasChanged);
+		if (m_generateMap && mapHasBeenUpdated) RegenerateMap(sizeHasChanged);
 
 	}
 
@@ -173,15 +311,16 @@ public:
 
 	void RegenerateMap(bool sizeHasChanged)
 	{
-		Terrain terrain { m_mapSize, m_mapSize, m_noiseSettings };
+		Terrain terrain { m_mapSize, m_mapSize, m_continalnessNoiseSettings };
 
 		auto& heightMap = terrain.GetHeightMap();
-
+		m_heightMapTest = heightMap;
+		m_heightMapTest.CreateHeightMapTexture();
 		Erosion erosion{ m_erosionSettings };
 		erosion.Erode(heightMap, m_mapSize, m_erosionIterations);
 
 		terrain.SetHeightMap(heightMap);
-		terrain.GenerateVertices(m_mapSize, m_mapSize, m_noiseSettings);
+		terrain.GenerateVertices(m_mapSize, m_mapSize, m_continalnessNoiseSettings);
 		auto& vertices = terrain.GetVertices();
 		auto& indices = terrain.GetIndices();
 
@@ -219,11 +358,16 @@ private:
 	std::shared_ptr<Texture2D> m_texture;
 	ShaderLibrary m_ShaderLibrary;
 
-	NoiseSettings m_noiseSettings;
+	NoiseSettings m_continalnessNoiseSettings;
+	NoiseSettings m_erosionNoiseSettings;
 	ErosionSettings m_erosionSettings;
 	int m_erosionIterations = 100000;
 
-	int m_mapSize = 500;
+	int m_mapSize = 100;
+	bool m_generateMap = false;
+
+	HeightMap m_heightMapTest;
+
 };
 
 

@@ -5,7 +5,6 @@
 #include "ImGuiLayer.h"
 #include "../Application/Application.h"
 #include <GLFW/glfw3.h>
-#include <gl/glew.h>
 
 
 ImGuiLayer::ImGuiLayer()

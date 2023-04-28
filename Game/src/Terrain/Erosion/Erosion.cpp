@@ -1,7 +1,7 @@
 #include "Erosion.h"
 
 // NIKE LA REFACTO
-Erosion::Erosion(ErosionSettings& settings): m_seed(settings.seed), m_erosionRadius(settings.erosionRadius), m_initialSpeed(settings.initialSpeed), m_initialWaterVolume(settings.initialWaterVolume), m_inertia(settings.inertia), m_sedimentCapacityFactor(settings.sedimentCapacityFactor), m_minSedimentCapacity(settings.minSedimentCapacity), m_depositSpeed(settings.depositSpeed), m_erodeSpeed(settings.erodeSpeed), m_evaporateSpeed(settings.evaporateSpeed), m_gravity(settings.gravity), m_maxDropletLifetime(settings.maxDropletLifetime)
+Erosion::Erosion(ErosionSettings& settings): m_enable(settings.enable), m_seed(settings.seed), m_erosionRadius(settings.erosionRadius), m_initialSpeed(settings.initialSpeed), m_initialWaterVolume(settings.initialWaterVolume), m_inertia(settings.inertia), m_sedimentCapacityFactor(settings.sedimentCapacityFactor), m_minSedimentCapacity(settings.minSedimentCapacity), m_depositSpeed(settings.depositSpeed), m_erodeSpeed(settings.erodeSpeed), m_evaporateSpeed(settings.evaporateSpeed), m_gravity(settings.gravity), m_maxDropletLifetime(settings.maxDropletLifetime)
 {}
 
 
@@ -12,6 +12,7 @@ void Erosion::Initialize(int mapSize) {
 
 
 void Erosion::Erode(std::vector<float>& map, int mapSize, int numIterations) {
+    if (!m_enable) return;
     Initialize(mapSize);
     std::uniform_int_distribution<int> dist(0, mapSize - 2);
 
