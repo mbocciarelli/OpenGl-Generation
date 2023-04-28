@@ -9,17 +9,20 @@ class VertexBuffer
 public:
 	VertexBuffer(uint32_t size)
 	{
-		glCreateBuffers(1, &m_id);
-		glBindBuffer(GL_ARRAY_BUFFER, m_id);
-		glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+		Load(size);
 	}
 
 	VertexBuffer(float* vertices, uint32_t size)
 	{
-		glCreateBuffers(1, &m_id);
-		glBindBuffer(GL_ARRAY_BUFFER, m_id);
-		glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+        Load(size, vertices);
 	}
+
+    void Load(uint32_t size, float* vertices = nullptr)
+    {
+        glCreateBuffers(1, &m_id);
+        glBindBuffer(GL_ARRAY_BUFFER, m_id);
+        glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+    }
 
 	~VertexBuffer()
 	{

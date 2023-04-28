@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <GL/glew.h>
+#include <mutex>
 
 #include "IndexBuffer.h"
 #include "VertexBuffer.h"
@@ -114,6 +115,7 @@ public:
 
 		m_VertexBuffers.push_back(vertexBuffer);
 	}
+
 	void SetIndexBuffer(const std::shared_ptr<IndexBuffer>& indexBuffer) {
 
 		glBindVertexArray(m_id);

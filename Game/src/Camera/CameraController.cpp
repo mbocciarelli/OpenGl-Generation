@@ -16,7 +16,7 @@ CameraController::CameraController(float FOV, float aspectRatio, float near, flo
 void CameraController::OnUpdate(float ts)
 {
 	auto translationSpeed = m_CameraTranslationSpeed * ts;
-	if (Input::IsKeyPressed(KeyCode::LeftShift))
+	if (Input::IsKeyPressed(KeyCode::LeftControl))
 		translationSpeed *= 10;
 	if (Input::IsKeyPressed(KeyCode::A))
 	{
@@ -34,6 +34,14 @@ void CameraController::OnUpdate(float ts)
 	{
 		m_Camera.SetPosition(m_Camera.GetPosition() - translationSpeed * ts * m_Camera.GetFront());
 	}
+    if (Input::IsKeyPressed(KeyCode::Space))
+    {
+        m_Camera.SetPosition(m_Camera.GetPosition() + translationSpeed * ts * m_Camera.GetUp());
+    }
+    if (Input::IsKeyPressed(KeyCode::LeftShift))
+    {
+        m_Camera.SetPosition(m_Camera.GetPosition() - translationSpeed * ts * m_Camera.GetUp());
+    }
 
 	if (Input::IsKeyPressed(KeyCode::Q))
 		m_Camera.SetYaw(m_Camera.GetYaw() + m_CameraRotationSpeed * ts);
