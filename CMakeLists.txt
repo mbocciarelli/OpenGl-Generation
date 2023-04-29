@@ -5,5 +5,4 @@ project(opengl-generationterrain)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_subdirectory(ProceduralGeneration)
 add_subdirectory(Game)

@@ -35,4 +35,3 @@ target_link_libraries(${GAME_TARGET_NAME} PRIVATE GLEW::GLEW)
 find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 target_include_directories(${GAME_TARGET_NAME} PRIVATE ${STB_INCLUDE_DIRS})
 
-target_link_libraries(${GAME_TARGET_NAME} PUBLIC ProceduralGeneration)

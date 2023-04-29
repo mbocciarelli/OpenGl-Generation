@@ -10,13 +10,12 @@
 #include "src/Camera/CameraController.h"
 #include "src/OpenGl/Renderer/RendererAPI.h"
 
-#include "../ProceduralGeneration/PerlinNoise/PerlinGeneration.hpp"
+#include "src/PerlinNoise/PerlinGeneration.h"
 #include <glm/gtc/noise.hpp>
-#include "../ProceduralGeneration/Terrain/HeightMap/HeightMap.h"
-#include "../ProceduralGeneration/Terrain/Terrain.h"
-#include "../ProceduralGeneration/Terrain/Erosion/Erosion.h"
+#include "src/Terrain/HeightMap/HeightMap.h"
 #include <queue>
 #include <thread>
+#include "src/Terrain/Chunk.h"
 
 class TestLayer : public Layer
 {
@@ -95,9 +94,9 @@ public:
 
 		glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(0.f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-		for (const auto& chunk: m_chunks)
+		for (auto& chunk: m_chunks)
         {
-            Renderer::Submit(textureShader, chunk.vertexArray, model);
+            Renderer::Submit(textureShader, chunk.GetVertexArray(), model);
         }
 
 		Renderer::EndScene();
@@ -142,7 +141,6 @@ public:
 
 					sizeHasChanged |= ImGui::SliderInt("Chunk Size", &m_chunkSize, 10.f, 5000.0f);
 					mapHasBeenUpdated |= sizeHasChanged;
-					mapHasBeenUpdated |= ImGui::Checkbox("Add Erosion", &m_erosionSettings.enable);
 
 					ImGui::EndTabItem();
 				}
@@ -291,26 +289,6 @@ public:
 					ImGui::EndTabItem();
 				}
 
-
-				if (m_erosionSettings.enable && ImGui::BeginTabItem("EROSION NOISE")) {
-					mapHasBeenUpdated |= ImGui::SliderInt("Erosion Iterations", &m_erosionIterations, 0, 500000);
-
-					mapHasBeenUpdated |= ImGui::SliderInt("seed", &m_erosionSettings.seed, 0, 100000);
-					mapHasBeenUpdated |= ImGui::SliderInt("erosionRadius", &m_erosionSettings.erosionRadius, 1, 7);
-					mapHasBeenUpdated |= ImGui::SliderFloat("Inertia", &m_erosionSettings.inertia, 0.0f, 1.0f);
-					mapHasBeenUpdated |= ImGui::SliderFloat("sedimentCapacityFactor", &m_erosionSettings.sedimentCapacityFactor, 0.0f, 10.0f);
-					mapHasBeenUpdated |= ImGui::SliderFloat("minSedimentCapacity", &m_erosionSettings.minSedimentCapacity, 0.0f, 1.0f);
-					mapHasBeenUpdated |= ImGui::SliderFloat("erodeSpeed", &m_erosionSettings.erodeSpeed, 0.0f, 1.0f);
-					mapHasBeenUpdated |= ImGui::SliderFloat("depositSpeed", &m_erosionSettings.depositSpeed, 0.0f, 1.0f);
-					mapHasBeenUpdated |= ImGui::SliderFloat("evaporateSpeed", &m_erosionSettings.evaporateSpeed, 0.0f, 1.0f);
-					mapHasBeenUpdated |= ImGui::SliderFloat("gravity", &m_erosionSettings.gravity, 1.0f, 10.0f);
-					mapHasBeenUpdated |= ImGui::SliderInt("maxDropletLifetime", &m_erosionSettings.maxDropletLifetime, 1, 100);
-					mapHasBeenUpdated |= ImGui::SliderFloat("initialWaterVolume", &m_erosionSettings.initialWaterVolume, 1.0f, 10.0f);
-					mapHasBeenUpdated |= ImGui::SliderFloat("initialSpeed", &m_erosionSettings.initialSpeed, 0.0f, 3.0f);
-
-					ImGui::EndTabItem();
-				}
-
 				if (ImGui::BeginTabItem("PRE-CONFIG")) {
 					/*if (ImGui::Button("Desert Config"))
 					{
@@ -368,19 +346,6 @@ public:
 
 	void GenerateChunk(Chunk& chunk, bool sizeHasChanged)
 	{
-		Terrain terrain { chunk , m_continalnessNoiseSettings };
-
-		auto& heightMap = terrain.GetHeightMap();
-		m_heightMapTest = heightMap;
-		m_heightMapTest.CreateHeightMapTexture();
-		Erosion erosion{ m_erosionSettings };
-		erosion.Erode(heightMap, m_chunkSize, m_erosionIterations);
-
-		terrain.SetHeightMap(heightMap);
-		terrain.GenerateVertices(chunk, m_continalnessNoiseSettings);
-		chunk.vertices = terrain.GetVertices();
-		chunk.indices = terrain.GetIndices();
-
 		RegenerationVerticesIndices(chunk, sizeHasChanged);
 	}
 
@@ -388,29 +353,29 @@ public:
     {
         if (!sizeHasChanged) {
 
-            if(chunk.vertexArray == nullptr)
+            if(chunk.GetVertexArray() == nullptr)
                 throw std::runtime_error("Chunk has no vertex array index");
 
-            auto& vertexBuffer = chunk.vertexArray->GetVertexBuffers()[0];
-            vertexBuffer->SetData(chunk.vertices.data(), sizeof(float) * chunk.vertices.size());
+            auto& vertexBuffer = chunk.GetVertexArray()->GetVertexBuffers()[0];
+            vertexBuffer->SetData(chunk.GetVertices().data(), sizeof(float) * chunk.GetVertices().size());
 
-            auto& indexBuffer = chunk.vertexArray->GetIndexBuffer();
-            indexBuffer->SetData(chunk.indices.data(), chunk.indices.size());
+            auto& indexBuffer = chunk.GetVertexArray()->GetIndexBuffer();
+            indexBuffer->SetData(chunk.GetIndices().data(), chunk.GetIndices().size());
 
         }
         else
         {
             auto vertexArray = VertexArray::Create();
-			chunk.vertexArray = vertexArray;
+			chunk.SetVertexArray(vertexArray);
 
-            const auto vertexBuffer = VertexBuffer::Create(chunk.vertices.data(), sizeof(float) * chunk.vertices.size());
+            const auto vertexBuffer = VertexBuffer::Create(chunk.GetVertices().data(), sizeof(float) * chunk.GetVertices().size());
             const BufferLayout layout = {
                     { ShaderDataType::Float3, "a_Position" },
             };
             vertexBuffer->SetLayout(layout);
             vertexArray->AddVertexBuffer(vertexBuffer);
 
-            const auto indexBuffer = IndexBuffer::Create(chunk.indices.data(), chunk.indices.size());
+            const auto indexBuffer = IndexBuffer::Create(chunk.GetIndices().data(), chunk.GetIndices().size());
             vertexArray->SetIndexBuffer(indexBuffer);
         }
     }
@@ -421,7 +386,7 @@ public:
 		m_chunks.clear();
 		for (int x = 0; x < m_nbChunksX; ++x)
 			for (int z = 0; z < m_nbChunksZ; ++z)
-				m_chunks.emplace_back(Chunk{ x, z, m_chunkSize, m_chunkSize });
+				m_chunks.emplace_back(Chunk{ x, z, m_chunkSize, m_chunkSize, m_continalnessNoiseSettings });
 
 		for (auto& chunk : m_chunks) {
 			GenerateChunk(chunk, true);
@@ -442,7 +407,6 @@ private:
 
 	NoiseSettings m_continalnessNoiseSettings;
 	NoiseSettings m_erosionNoiseSettings;
-	ErosionSettings m_erosionSettings;
 	int m_erosionIterations = 0;
 
 	bool m_generateMap = false;

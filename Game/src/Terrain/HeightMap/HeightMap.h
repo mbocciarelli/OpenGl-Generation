@@ -1,9 +1,8 @@
 #pragma once
 #include <vector>
-
 #include "gl/glew.h"
 #include "../../libs/noise/PerlinNoise.h"
-#include "../Chunk.h"
+#include "../../PerlinNoise/PerlinGeneration.h"
 
 template<typename Type>
 Type Map(Type val, Type in_min, Type in_max, Type out_min, Type out_max)
@@ -19,23 +18,23 @@ public:
 	GLuint textureId = 0;
 
 	HeightMap() = default;
-	HeightMap(const Chunk chunk, NoiseSettings& settings): mapWidth(chunk.width), mapHeight(chunk.height)
+	HeightMap(const int width, const int height, const int x, const int z, NoiseSettings& settings): mapWidth(width), mapHeight(height)
 	{
-		resize(chunk.width * chunk.height);
+		resize(width * height);
 		const siv::PerlinNoise perlin(settings.seed);
 		const float f = settings.frequency * 0.001f;
 
-        const float startX = chunk.x * chunk.width + chunk.x * -1.f;
-        const float startZ = chunk.z * chunk.height + chunk.z * -1.f;
+        const float startX = x * width + x * -1.f;
+        const float startZ = z * height + z * -1.f;
 
-		for (int z = 0; z < chunk.height; ++z)
+		for (int z = 0; z < height; ++z)
 		{
-			for (int x = 0; x < chunk.width; ++x)
+			for (int x = 0; x < width; ++x)
 			{
                 auto x1 = x + startX;
                 auto z1 = z + startZ;
 
-				size_t index = x + z * chunk.width;
+				size_t index = x + z * width;
 				float height;
 				float noise = settings.GetNoiseValue(perlin, x1 * f, z1 * f);
 
