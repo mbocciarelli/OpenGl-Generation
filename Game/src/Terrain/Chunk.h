@@ -13,7 +13,7 @@ struct NoiseSettings;
 class Chunk
 {
 public:
-    Chunk(int x, int z, int width, int height, NoiseSettings& continentalnessSettings, NoiseSettings& erosionSettings, bool blend): x(x), z(z), width(width), height(height), m_heightMap(width, height, x, z, continentalnessSettings, erosionSettings, blend)
+    Chunk(int x, int z, int width, int height, int lod, NoiseSettings& continentalnessSettings, NoiseSettings& erosionSettings, bool blend): x(x), z(z), width(width), height(height), lod(lod), m_heightMap(width, height, x, z, lod, continentalnessSettings, erosionSettings, blend)
     {
 		GenerateVertices();
 		GenerateIndices();
@@ -54,22 +54,22 @@ private:
 	void GenerateVertices()
 	{
 		m_vertices.clear();
-		m_vertices.resize(width * height * 3);
+		m_vertices.resize(width * lod * height * lod * 3);
 
 		const float startX = x * width + x * -1.f;
 		const float startZ = z * height + z * -1.f;
 
-		for (int z = 0; z < height; ++z)
+		for (int z = 0; z < height * lod; ++z)
 		{
-			for (int x = 0; x < width; ++x)
+			for (int x = 0; x < width * lod; ++x)
 			{
-				const size_t index = (x + z * width) * 3;
+				const size_t index = (x + z * width * lod) * 3;
 
-				auto x1 = x + startX;
-				auto z1 = z + startZ;
+				auto x1 = x / (float)lod + startX;
+				auto z1 = z / (float)lod + startZ;
 
 				m_vertices[index] = x1;
-				m_vertices[index + 1] = m_heightMap[x + z * width];
+				m_vertices[index + 1] = m_heightMap[x + z * width * lod];
 				m_vertices[index + 2] = z1;
 			}
 		}
@@ -78,18 +78,18 @@ private:
 	void GenerateIndices()
 	{
 		m_indices.clear();
-		m_indices.resize((width - 1) * (height - 1) * 6);
-		for (int z = 0; z < height - 1; ++z)
+		m_indices.resize((width * lod - 1 * lod) * (height * lod - 1 * lod) * 6);
+		for (int z = 0; z < height * lod - 1 * lod; ++z)
 		{
-			for (int x = 0; x < width - 1; ++x)
+			for (int x = 0; x < width * lod - 1 * lod; ++x)
 			{
-				const size_t index = (x + z * (width - 1)) * 6;
-				m_indices[index] = x + z * width;
-				m_indices[index + 1] = x + (z + 1) * width;
-				m_indices[index + 2] = x + 1 + z * width;
-				m_indices[index + 3] = x + 1 + z * width;
-				m_indices[index + 4] = x + (z + 1) * width;
-				m_indices[index + 5] = x + 1 + (z + 1) * width;
+				const size_t index = (x + z * (width * lod - 1 * lod)) * 6;
+				m_indices[index] = x + z * width * lod;
+				m_indices[index + 1] = x + (z + 1) * width * lod;
+				m_indices[index + 2] = x + 1 + z * width * lod;
+				m_indices[index + 3] = x + 1 + z * width * lod;
+				m_indices[index + 4] = x + (z + 1) * width * lod;
+				m_indices[index + 5] = x + 1 + (z + 1) * width * lod;
 			}
 		}
 	}
@@ -99,6 +99,7 @@ public:
     int z = 0;
     int width = 0;
     int height = 0;
+	int lod = 1;
 
 private:
     std::vector<float> m_vertices;

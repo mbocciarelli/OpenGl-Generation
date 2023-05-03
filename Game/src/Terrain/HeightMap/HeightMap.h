@@ -18,23 +18,23 @@ public:
 	GLuint textureId = 0;
 
 	HeightMap() = default;
-	HeightMap(const int width, const int height, const int x, const int z, NoiseSettings& continentalnessSettings, NoiseSettings& erosionSettings, bool blend): mapWidth(width), mapHeight(height)
+	HeightMap(const int width, const int height, const int x, const int z, const int lod, NoiseSettings& continentalnessSettings, NoiseSettings& erosionSettings, bool blend): mapWidth(width), mapHeight(height)
 	{
-		resize(width * height);
+		resize(width * lod * height * lod);
 		const siv::PerlinNoise continentalnessPerlin(continentalnessSettings.seed);
 		const siv::PerlinNoise erosionPerlin(erosionSettings.seed);
 
         const float startX = x * width + x * -1.f;
         const float startZ = z * height + z * -1.f;
 
-		for (int z = 0; z < height; ++z)
+		for (int z = 0; z < height * lod; ++z)
 		{
-			for (int x = 0; x < width; ++x)
+			for (int x = 0; x < width * lod; ++x)
 			{
-                auto x1 = x + startX;
-                auto z1 = z + startZ;
+                auto x1 = x / (float)lod + startX;
+                auto z1 = z / (float)lod + startZ;
 
-				size_t index = x + z * width;
+				size_t index = x + z * width * lod;
 
 				const float f = continentalnessSettings.frequency * 0.001f;
 				float continentalnessNoise = continentalnessSettings.GetNoiseValue(continentalnessPerlin, x1 * f, z1 * f);

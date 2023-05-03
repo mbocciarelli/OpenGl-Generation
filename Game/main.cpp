@@ -145,7 +145,8 @@ public:
 					mapHasBeenUpdated |= ImGui::Checkbox("Generate map", &m_generateMap);
 					mapHasBeenUpdated |= ImGui::Checkbox("Blend Noise map", &m_blendNoiseMap);
 
-					sizeHasChanged |= ImGui::SliderInt("Chunk Size", &m_chunkSize, 10.f, 5000.0f);
+					sizeHasChanged |= ImGui::SliderInt("Chunk Size", &m_chunkSize, 10, 5000);
+					sizeHasChanged |= ImGui::SliderInt("Chunk LOD", &m_lod, 1, 10);
 					mapHasBeenUpdated |= sizeHasChanged;
 
 					ImGui::EndTabItem();
@@ -313,8 +314,8 @@ public:
              std::vector<std::thread> m_threads;*/
 
 			 GenerateChunks();
-			 m_continalnessNoiseHeightMap = HeightMap{ 500,500,0,0,m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap };
-			 m_continalnessNoiseHeightMap.CreateHeightMapTexture();
+			 //m_continalnessNoiseHeightMap = HeightMap{ 500,500,0,0, m_lod, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap };
+			 //m_continalnessNoiseHeightMap.CreateHeightMapTexture();
 
              /*for(int i = 0; i < nbrThreads; ++i)
              {
@@ -389,7 +390,7 @@ public:
 		m_chunks.clear();
 		for (int x = 0; x < m_nbChunksX; ++x)
 			for (int z = 0; z < m_nbChunksZ; ++z)
-				m_chunks.emplace_back(Chunk{ x, z, m_chunkSize, m_chunkSize, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap });
+				m_chunks.emplace_back(Chunk{ x, z, m_chunkSize, m_chunkSize, m_lod, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap });
 
 		for (auto& chunk : m_chunks) {
 			GenerateChunk(chunk, true);
@@ -419,6 +420,7 @@ private:
 	HeightMap m_erosionNoiseHeightMap;
 
     int m_chunkSize = 16;
+	int m_lod = 1;
 
 	int m_nbChunksX = 20;
 	int m_nbChunksZ = 20;
