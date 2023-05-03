@@ -16,6 +16,7 @@
 #include <queue>
 #include <thread>
 #include "src/Terrain/Chunk.h"
+#include <glm/gtc/type_ptr.hpp>
 
 class TestLayer : public Layer
 {
@@ -89,8 +90,6 @@ public:
 		Renderer::BeginScene(m_cameraController.GetCamera());
 
 		const auto textureShader = m_ShaderLibrary.Get("MapShader");
-		textureShader->SetFloat("u_minHeight", m_continalnessNoiseSettings.minHeight);
-		textureShader->SetFloat("u_maxHeight", m_continalnessNoiseSettings.maxHeight);
 
 		glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(0.f), glm::vec3(0.5f, 1.0f, 0.0f));
 
@@ -128,6 +127,12 @@ public:
 					ImGui::SliderFloat("Distance", &far, 0.f, 10000.0f);
 					m_cameraController.GetCamera().SetFarClip(far);
 
+					auto position = m_cameraController.GetCamera().GetPosition();
+					float* data = glm::value_ptr(position);
+					ImGui::InputFloat3("Position", data);
+					glm::vec3 vec = glm::make_vec3(data);
+					m_cameraController.GetCamera().SetPosition(vec);
+
 					ImGui::EndTabItem();
 				}
 
@@ -137,7 +142,8 @@ public:
 
 				if (ImGui::BeginTabItem("MAP OPTIONS")) {
 
-					ImGui::Checkbox("Generate map", &m_generateMap);
+					mapHasBeenUpdated |= ImGui::Checkbox("Generate map", &m_generateMap);
+					mapHasBeenUpdated |= ImGui::Checkbox("Blend Noise map", &m_blendNoiseMap);
 
 					sizeHasChanged |= ImGui::SliderInt("Chunk Size", &m_chunkSize, 10.f, 5000.0f);
 					mapHasBeenUpdated |= sizeHasChanged;
@@ -148,9 +154,6 @@ public:
 				if (ImGui::BeginTabItem("Continentalness")) {
 					if (ImGui::BeginTabBar("ContinentalnessBar")) {
 						if (ImGui::BeginTabItem("General options")) {
-
-							mapHasBeenUpdated |= ImGui::SliderFloat("min height", &m_continalnessNoiseSettings.minHeight, 0, 256.f);
-							mapHasBeenUpdated |= ImGui::SliderFloat("max height", &m_continalnessNoiseSettings.maxHeight, 0, 256.f);
 
 							mapHasBeenUpdated |= ImGui::Checkbox("Add Ridge Noise", &m_continalnessNoiseSettings.ridgeNoise);
 
@@ -163,7 +166,6 @@ public:
 							mapHasBeenUpdated |= ImGui::SliderInt("Octaves", &m_continalnessNoiseSettings.octaves, 1, 10);
 							mapHasBeenUpdated |= ImGui::SliderFloat("Persistence", &m_continalnessNoiseSettings.persistence, 0.1f, 1.0f);
 							mapHasBeenUpdated |= ImGui::SliderInt("Seed", &m_continalnessNoiseSettings.seed, 0, 100000);
-							mapHasBeenUpdated |= ImGui::SliderFloat("Exponent", &m_continalnessNoiseSettings.exponent, 0.8f, 10.0f);
 
 							ImGui::EndTabItem();
 						}
@@ -182,7 +184,7 @@ public:
 								ImGui::PushItemWidth(-1);
 
 								// Draw the noise input box for this row
-								ImGui::InputFloat("##Continentalness", &m_continalnessNoiseSettings.splinePoints[i].value);
+								mapHasBeenUpdated |= ImGui::InputFloat("##Continentalness", &m_continalnessNoiseSettings.splinePoints[i].value);
 
 								ImGui::PopItemWidth();
 								ImGui::NextColumn();
@@ -190,7 +192,7 @@ public:
 								ImGui::PushItemWidth(-1);
 
 								// Draw the height input box for this row
-								ImGui::InputFloat("##Height", &m_continalnessNoiseSettings.splinePoints[i].height);
+								mapHasBeenUpdated |= ImGui::InputFloat("##Height", &m_continalnessNoiseSettings.splinePoints[i].height);
 
 								ImGui::PopItemWidth();
 								ImGui::NextColumn();
@@ -209,8 +211,9 @@ public:
 
 						if (ImGui::BeginTabItem("Continentalness Noise Image"))
 						{
-							if (m_heightMapTest.textureId != 0)
-								ImGui::Image((void*)(intptr_t)m_heightMapTest.textureId, ImVec2(m_heightMapTest.mapWidth, m_heightMapTest.mapHeight));
+
+							if (m_continalnessNoiseHeightMap.textureId != 0)
+								ImGui::Image((void*)(intptr_t)m_continalnessNoiseHeightMap.textureId, ImVec2(m_continalnessNoiseHeightMap.mapWidth, m_continalnessNoiseHeightMap.mapHeight));
 							ImGui::EndTabItem();
 						}
 
@@ -224,9 +227,6 @@ public:
 					if (ImGui::BeginTabBar("ErosionBar")) {
 						if (ImGui::BeginTabItem("General options")) {
 
-							mapHasBeenUpdated |= ImGui::SliderFloat("min height", &m_erosionNoiseSettings.minHeight, 0, 256.f);
-							mapHasBeenUpdated |= ImGui::SliderFloat("max height", &m_erosionNoiseSettings.maxHeight, 0, 256.f);
-
 							mapHasBeenUpdated |= ImGui::Checkbox("Add Ridge Noise", &m_erosionNoiseSettings.ridgeNoise);
 
 							ImGui::EndTabItem();
@@ -238,7 +238,7 @@ public:
 							mapHasBeenUpdated |= ImGui::SliderInt("Octaves", &m_erosionNoiseSettings.octaves, 1, 10);
 							mapHasBeenUpdated |= ImGui::SliderFloat("Persistence", &m_erosionNoiseSettings.persistence, 0.1f, 1.0f);
 							mapHasBeenUpdated |= ImGui::SliderInt("Seed", &m_erosionNoiseSettings.seed, 0, 100000);
-							mapHasBeenUpdated |= ImGui::SliderFloat("Exponent", &m_erosionNoiseSettings.exponent, 0.8f, 10.0f);
+							mapHasBeenUpdated |= ImGui::SliderFloat("Erosion Factor", &m_erosionNoiseSettings.factor, 0.f, 1.f);
 
 							ImGui::EndTabItem();
 						}
@@ -257,7 +257,7 @@ public:
 								ImGui::PushItemWidth(-1);
 
 								// Draw the noise input box for this row
-								ImGui::InputFloat("##Erosion", &m_erosionNoiseSettings.splinePoints[i].value);
+								mapHasBeenUpdated |= ImGui::InputFloat("##Erosion", &m_erosionNoiseSettings.splinePoints[i].value);
 
 								ImGui::PopItemWidth();
 								ImGui::NextColumn();
@@ -265,7 +265,7 @@ public:
 								ImGui::PushItemWidth(-1);
 
 								// Draw the height input box for this row
-								ImGui::InputFloat("##Height", &m_erosionNoiseSettings.splinePoints[i].height);
+								mapHasBeenUpdated |= ImGui::InputFloat("##Height", &m_erosionNoiseSettings.splinePoints[i].height);
 
 								ImGui::PopItemWidth();
 								ImGui::NextColumn();
@@ -279,6 +279,7 @@ public:
 								NoiseSettings::RowData newRow;
 								m_erosionNoiseSettings.splinePoints.push_back(newRow);
 							}
+
 							ImGui::EndTabItem();
 						}
 
@@ -312,6 +313,8 @@ public:
              std::vector<std::thread> m_threads;*/
 
 			 GenerateChunks();
+			 m_continalnessNoiseHeightMap = HeightMap{ 500,500,0,0,m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap };
+			 m_continalnessNoiseHeightMap.CreateHeightMapTexture();
 
              /*for(int i = 0; i < nbrThreads; ++i)
              {
@@ -386,7 +389,7 @@ public:
 		m_chunks.clear();
 		for (int x = 0; x < m_nbChunksX; ++x)
 			for (int z = 0; z < m_nbChunksZ; ++z)
-				m_chunks.emplace_back(Chunk{ x, z, m_chunkSize, m_chunkSize, m_continalnessNoiseSettings });
+				m_chunks.emplace_back(Chunk{ x, z, m_chunkSize, m_chunkSize, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap });
 
 		for (auto& chunk : m_chunks) {
 			GenerateChunk(chunk, true);
@@ -405,13 +408,15 @@ private:
 	std::shared_ptr<Texture2D> m_texture;
 	ShaderLibrary m_ShaderLibrary;
 
-	NoiseSettings m_continalnessNoiseSettings;
-	NoiseSettings m_erosionNoiseSettings;
+	NoiseSettings m_continalnessNoiseSettings = continentalnessNoiseSettings;
+	NoiseSettings m_erosionNoiseSettings = erosionNoiseSettings;
 	int m_erosionIterations = 0;
 
-	bool m_generateMap = false;
+	bool m_generateMap = true;
+	bool m_blendNoiseMap = true;
 
-	HeightMap m_heightMapTest;
+	HeightMap m_continalnessNoiseHeightMap;
+	HeightMap m_erosionNoiseHeightMap;
 
     int m_chunkSize = 16;
 

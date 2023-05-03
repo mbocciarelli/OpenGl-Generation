@@ -16,12 +16,9 @@ struct NoiseSettings
     float frequency = 4.5f;
     int octaves = 5;
     float persistence = 0.5f;
+    float factor = 0.5f;
 
-    float exponent = 1.f;
     int seed = 0;
-
-    float minHeight = 0.f;
-    float maxHeight = 200.f;
 
     bool ridgeNoise = false;
     bool terraces = false;
@@ -31,52 +28,50 @@ struct NoiseSettings
     {
         return perlin.octave2D(x, z, octaves, persistence);
     }
-
-    template<typename Type>
-    Type RangeMax(Type val) const
-    {
-        return (val - -1.f) * (maxHeight - minHeight) / (1.f - -1.f) + minHeight;
-    }
 };
-//
-//
-//class PerlinGeneration {
-//
-//public:
-//    static void GenerateHeightMap(std::vector<float>& vertices, std::vector<uint32_t>& indices, int size, const NoiseSettings& settings)
-//    {
-//        const siv::PerlinNoise perlin(settings.seed);
-//        const float f = settings.frequency * 0.001f;
-//        for (int z = 0; z < size; ++z)
-//        {
-//            for (int x = 0; x < size; ++x)
-//            {
-//                size_t index = (x + z * size) * 3;
-//                float height = settings.GetNoiseValue(perlin, x * f, z * f);
-//                height = pow(height, 3.f);
-//                vertices[index] = x;
-//                vertices[index + 1] = settings.RangeMax(height);
-//                vertices[index + 2] = z;
-//            }
-//        }
-//        int indexIndice = 0;
-//        for (int z = 0; z < size - 1; ++z)
-//        {
-//            for (int x = 0; x < size - 1; ++x)
-//            {
-//                int topLeft = (x + z * size);
-//                int topRight = topLeft + 1;
-//                int bottomLeft = topLeft + size;
-//                int bottomRight = bottomLeft + 1;
-//
-//                indices[indexIndice++] = topLeft;
-//                indices[indexIndice++] = bottomLeft;
-//                indices[indexIndice++] = topRight;
-//                indices[indexIndice++] = topRight;
-//                indices[indexIndice++] = bottomLeft;
-//                indices[indexIndice++] = bottomRight;
-//            }
-//        }
-//    }
-//
-//};
+
+
+const NoiseSettings continentalnessNoiseSettings{
+    .splinePoints = {
+        {-1.f, 10.f},
+        { -0.5f, 20.f },
+        {-0.4, 40.f },
+        { -0.2f, 44.f },
+        {-0.15f, 60.f},
+        {-0.1f, 60.f},
+        {0.f, 70.f},
+        {0.2f, 80.f},
+        {1.f, 10.f}
+        },
+    .frequency = 0.001f,
+    .octaves = 5,
+    .persistence = 0.5f,
+    .factor = 1.f,
+    .seed = 0,
+    .ridgeNoise = false,
+    .terraces = false,
+    .terraceCount = 1
+};
+
+const NoiseSettings erosionNoiseSettings{
+    .splinePoints = {
+        {-1.f, 50.f},
+        { -0.4f, 50.f },
+        {-0.5, 40.f },
+        { -0.1f, 10.f },
+        {0.3f, 10.f},
+        {0.5f, 10.f},
+        {0.55f, 20.f},
+        {0.6f, 30.f},
+        {0.61f, 50.f},
+        {1.f, 10.f},
+        },
+    .frequency = 0.01f,
+    .octaves = 2,
+    .persistence = 0.5f,
+    .factor = 0.5f,
+    .seed = 0,
+    .ridgeNoise = false,
+    .terraces = false,
+    .terraceCount = 1
+};

@@ -29,5 +29,5 @@ private:
 
 	Camera m_Camera;
 
-	float m_CameraTranslationSpeed = 10.f, m_CameraRotationSpeed = 2.f;
+	float m_CameraTranslationSpeed = 1000.f, m_CameraRotationSpeed = 2.f;
 };

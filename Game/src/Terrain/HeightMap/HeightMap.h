@@ -18,11 +18,11 @@ public:
 	GLuint textureId = 0;
 
 	HeightMap() = default;
-	HeightMap(const int width, const int height, const int x, const int z, NoiseSettings& settings): mapWidth(width), mapHeight(height)
+	HeightMap(const int width, const int height, const int x, const int z, NoiseSettings& continentalnessSettings, NoiseSettings& erosionSettings, bool blend): mapWidth(width), mapHeight(height)
 	{
 		resize(width * height);
-		const siv::PerlinNoise perlin(settings.seed);
-		const float f = settings.frequency * 0.001f;
+		const siv::PerlinNoise continentalnessPerlin(continentalnessSettings.seed);
+		const siv::PerlinNoise erosionPerlin(erosionSettings.seed);
 
         const float startX = x * width + x * -1.f;
         const float startZ = z * height + z * -1.f;
@@ -35,15 +35,66 @@ public:
                 auto z1 = z + startZ;
 
 				size_t index = x + z * width;
+
+				const float f = continentalnessSettings.frequency * 0.001f;
+				float continentalnessNoise = continentalnessSettings.GetNoiseValue(continentalnessPerlin, x1 * f, z1 * f);
+
+				if (continentalnessSettings.splinePoints.size() > 1)
+				{
+					auto previousSpline = continentalnessSettings.splinePoints[0];
+					auto currentSpline = continentalnessSettings.splinePoints[0];
+					for (int i = 0; i < continentalnessSettings.splinePoints.size(); ++i)
+					{
+						previousSpline = currentSpline;
+						currentSpline = continentalnessSettings.splinePoints[i];
+						if (continentalnessNoise < continentalnessSettings.splinePoints[i].value)
+						{
+							break;
+						}
+					}
+					continentalnessNoise = Map(continentalnessNoise, previousSpline.value, currentSpline.value, previousSpline.height, currentSpline.height);
+				}
+
+				const float g = erosionSettings.frequency * 0.001f;
+				float erosionNoise = erosionSettings.GetNoiseValue(erosionPerlin, x1 * g, z1 * g);
+
+				if (erosionSettings.splinePoints.size() > 1)
+				{
+					auto previousSpline = erosionSettings.splinePoints[0];
+					auto currentSpline = erosionSettings.splinePoints[0];
+					for (int i = 0; i < erosionSettings.splinePoints.size(); ++i)
+					{
+						previousSpline = currentSpline;
+						currentSpline = erosionSettings.splinePoints[i];
+						if (erosionNoise < erosionSettings.splinePoints[i].value)
+						{
+							break;
+						}
+					}
+					erosionNoise = Map(erosionNoise, previousSpline.value, currentSpline.value, previousSpline.height, currentSpline.height);
+				}
+
+
+				if (continentalnessSettings.ridgeNoise) {
+					continentalnessNoise = Ridgenoise(continentalnessNoise);
+					erosionNoise = Ridgenoise(erosionNoise);
+				}
+
+				if (continentalnessSettings.terraces) {
+					continentalnessNoise = terraceNoise(continentalnessNoise, continentalnessSettings.terraceCount);
+					erosionNoise = terraceNoise(erosionNoise, erosionSettings.terraceCount);
+				}
+
 				float height;
-				float noise = settings.GetNoiseValue(perlin, x1 * f, z1 * f);
 
-				if (settings.ridgeNoise) noise = Ridgenoise(noise);
-				if (settings.terraces) height = terraceNoise(noise, settings.terraceCount);
-				else height = pow(noise, settings.exponent);
-				height = pow(noise, settings.exponent);
+				if (blend) {
+					height = BlendWithSubstractiveErosionNoise(continentalnessNoise, erosionNoise, erosionSettings.factor);
+				} else
+				{
+					height = continentalnessNoise;
+				}
 
-				(*this)[index] = settings.RangeMax(height);
+				(*this)[index] = height;
 			}
 		}
 	}
@@ -76,13 +127,23 @@ public:
 
 		glGenTextures(1, &textureId);
 		glBindTexture(GL_TEXTURE_2D, textureId);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, mapWidth, mapHeight, 0, GL_RED, GL_UNSIGNED_BYTE, textureData.data());
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, mapWidth, mapHeight, 0, GL_RED, GL_UNSIGNED_BYTE, textureData.data());
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
 
 		return textureId;
 	}
+
+
+	float BlendWithSubstractiveErosionNoise(float v1, float erosionNoise, float erosionFactor) {
+		const float erosionValue = erosionNoise * erosionFactor;
+		auto v =  std::max(0.f, std::min(v1 - erosionValue, v1));
+		return v;
+	}
+
 };

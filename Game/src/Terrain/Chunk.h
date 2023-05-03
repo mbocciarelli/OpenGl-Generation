@@ -13,7 +13,7 @@ struct NoiseSettings;
 class Chunk
 {
 public:
-    Chunk(int x, int z, int width, int height, NoiseSettings& settings): x(x), z(z), width(width), height(height), m_heightMap(width, height, x, z, settings)
+    Chunk(int x, int z, int width, int height, NoiseSettings& continentalnessSettings, NoiseSettings& erosionSettings, bool blend): x(x), z(z), width(width), height(height), m_heightMap(width, height, x, z, continentalnessSettings, erosionSettings, blend)
     {
 		GenerateVertices();
 		GenerateIndices();
