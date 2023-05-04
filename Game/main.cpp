@@ -113,6 +113,9 @@ public:
 					mapHasBeenUpdated |= ImGui::Checkbox("Blend Noise map", &m_blendNoiseMap);
 
 					sizeHasChanged |= ImGui::SliderInt("Chunk Size", &m_chunkSize, 10, 5000);
+					sizeHasChanged |= ImGui::SliderInt("Chunk X", &m_nbChunksX, 1, 200);
+					sizeHasChanged |= ImGui::SliderInt("Chunk Y", &m_nbChunksZ, 1, 200);
+
 					sizeHasChanged |= ImGui::SliderInt("Chunk LOD", &m_lod, 1, 10);
 					mapHasBeenUpdated |= sizeHasChanged;
 
@@ -373,13 +376,10 @@ private:
 	CameraController m_cameraController;
 
     std::vector<Chunk> m_chunks;
-	std::shared_ptr<VertexArray> m_SquareVA;
-	std::shared_ptr<Texture2D> m_texture;
 	ShaderLibrary m_ShaderLibrary;
 
 	NoiseSettings m_continalnessNoiseSettings = continentalnessNoiseSettings;
 	NoiseSettings m_erosionNoiseSettings = erosionNoiseSettings;
-	int m_erosionIterations = 0;
 
 	bool m_generateMap = true;
 	bool m_blendNoiseMap = true;
