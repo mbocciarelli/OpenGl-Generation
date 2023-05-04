@@ -13,7 +13,12 @@ file(GLOB_RECURSE sources
 )
 
 # Add all the files in the assets folder to the assets variable
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+IF(WIN32)
+    file(COPY ${CMAKE_CURRENT_LIST_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+ELSE()
+    file(COPY ${CMAKE_CURRENT_LIST_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+ENDIF()
+
 
 # Add the sources to the executable
 add_executable(${GAME_TARGET_NAME} ${sources})

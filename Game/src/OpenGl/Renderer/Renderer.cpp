@@ -20,7 +20,9 @@ void Renderer::EndScene()
 
 }
 
-void Renderer::Submit(const std::shared_ptr<Shader>& shader, const std::shared_ptr<VertexArray>& vertexArray, const glm::mat4& transform)
+void Renderer::Submit(const std::shared_ptr<Shader>& shader, const std::shared_ptr<VertexArray>& vertexArray
+                        , const std::vector<std::shared_ptr<Texture2D>>& textures
+                        , const glm::mat4& transform)
 {
 	shader->Bind();
 	shader->SetMat4("u_ViewProjection", s_SceneData->ViewProjectionMatrix);
@@ -29,5 +31,15 @@ void Renderer::Submit(const std::shared_ptr<Shader>& shader, const std::shared_p
 	shader->SetMat4("u_Transform", transform);
 
 	vertexArray->Bind();
+
+    if (!textures.empty())
+    {
+        for (int i = 0; i < textures.size(); i++)
+        {
+            textures[i]->Bind(i);
+            shader->SetInt(textures[i]->GetName(), i);
+        }
+    }
+
 	RendererAPI::Get()->DrawIndexed(vertexArray);
 }

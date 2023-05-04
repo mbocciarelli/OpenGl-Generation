@@ -27,7 +27,7 @@ class Texture2D : public Texture
 {
 public:
 	Texture2D(uint32_t width, uint32_t height);
-	Texture2D(const std::string& path);
+	Texture2D(const std::string& name, const std::string& path);
 	~Texture2D() override;
 
 	uint32_t GetWidth() const override { return m_Width; }
@@ -35,6 +35,7 @@ public:
 	uint32_t GetRendererID() const override { return m_RendererID; }
 
 	const std::string& GetPath() const override { return m_Path; }
+    const std::string& GetName() const { return m_Name; }
 
 	void SetData(void* data, uint32_t size) override;
 
@@ -51,12 +52,13 @@ public:
 	{
 		return std::make_shared<Texture2D>(width, height);
 	}
-	static std::shared_ptr<Texture2D> Create(const std::string& path)
+	static std::shared_ptr<Texture2D> Create(const std::string& name, const std::string& path)
 	{
-		return std::make_shared<Texture2D>(path);
+		return std::make_shared<Texture2D>(name, path);
 	}
 
 private:
+    std::string m_Name;
 	std::string m_Path;
 	bool m_IsLoaded = false;
 	uint32_t m_Width, m_Height;

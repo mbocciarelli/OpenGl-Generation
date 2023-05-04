@@ -2,6 +2,7 @@
 #include "../../Camera/Camera.h"
 #include "../Buffer/VertexArray.h"
 #include "../Shader/Shader.h"
+#include "../Texture/Texture.h"
 
 class OrthographicCamera;
 
@@ -17,7 +18,7 @@ public:
 
 	static void EndScene();
 
-	static void Submit(const std::shared_ptr<Shader>& shader, const std::shared_ptr<VertexArray>& vertexArray, const glm::mat4& transform = glm::mat4(1.0f));
+	static void Submit(const std::shared_ptr<Shader>& shader, const std::shared_ptr<VertexArray>& vertexArray, const std::vector<std::shared_ptr<Texture2D>>& textures, const glm::mat4& transform = glm::mat4(1.0f));
 
 private:
 	struct SceneData

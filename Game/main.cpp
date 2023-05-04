@@ -26,17 +26,25 @@ public:
 		m_cameraController.GetCamera().SetPosition({ -37.5531f, 71.7751f, 6.45213f });
 		m_cameraController.GetCamera().SetYaw(33.f);
 
+        m_textures.push_back(Texture2D::Create("grassTexture","./assets/textures/Grass.jpg"));
+        m_textures.push_back(Texture2D::Create("rockTexture","./assets/textures/Rock.jpg"));
+        m_textures.push_back(Texture2D::Create("sandTexture","./assets/textures/sand.bmp"));
+        m_textures.push_back(Texture2D::Create("snowTexture","./assets/textures/Neige.png"));
+
+
 		GenerateChunks();
 		GenerateWater();
-		
-        m_ShaderLibrary.Load("MapShader", "./assets/shaders/vertexShader.glsl", "./assets/shaders/fragmentShader.glsl");
 
+        //m_ShaderLibrary.Load("MapShader", "./assets/shaders/vertexShader.glsl", "./assets/shaders/fragmentShader.glsl");
+        m_ShaderLibrary.Load("MapShader", "./assets/shaders/Map/vertexShader.glsl", "./assets/shaders/Map/fragmentShader.glsl");
 		m_ShaderLibrary.Load("WaterShader", "./assets/shaders/Water/vertexShader.glsl", "./assets/shaders/Water/fragmentShader.glsl");
 
         auto shader = m_ShaderLibrary.Get("MapShader");
 
         shader->Bind();
-
+        shader->SetFloat("grassThreshold", m_grassThreshold);
+        shader->SetFloat("rockThreshold", m_rockThreshold);
+        shader->SetFloat("sandThreshold", m_sandThreshold);
     }
 
     ~TestLayer() override = default;
@@ -59,10 +67,10 @@ public:
 
 		for (auto& chunk: m_chunks)
         {
-            Renderer::Submit(mapShader, chunk.GetVertexArray(), model);
+            Renderer::Submit(mapShader, chunk.GetVertexArray(), m_textures, model);
         }
 
-		Renderer::Submit(waterShader, m_water.GetVertexArray(), model);
+		Renderer::Submit(waterShader, m_water.GetVertexArray(), m_textures, model);
 
 		Renderer::EndScene();
 	}
@@ -105,6 +113,13 @@ public:
 
 				if (ImGui::BeginTabItem("DEBUG")) {
 					ImGui::EndTabItem();
+
+                    if (ImGui::Button("Fill"))
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+                    if (ImGui::Button("Wireframe"))
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
 				}
 
 				if (ImGui::BeginTabItem("MAP OPTIONS")) {
@@ -112,7 +127,7 @@ public:
 					mapHasBeenUpdated |= ImGui::Checkbox("Generate map", &m_generateMap);
 					mapHasBeenUpdated |= ImGui::Checkbox("Blend Noise map", &m_blendNoiseMap);
 
-					sizeHasChanged |= ImGui::SliderInt("Chunk Size", &m_chunkSize, 10, 5000);
+					sizeHasChanged |= ImGui::SliderInt("Chunk Size", &m_chunkSize, 10, 2000);
 					sizeHasChanged |= ImGui::SliderInt("Chunk X", &m_nbChunksX, 1, 200);
 					sizeHasChanged |= ImGui::SliderInt("Chunk Y", &m_nbChunksZ, 1, 200);
 
@@ -120,6 +135,30 @@ public:
 					mapHasBeenUpdated |= sizeHasChanged;
 
 					waterHeightUpdated |= ImGui::SliderInt("Water Height", &m_waterHeight, 0, 100);
+
+                    if(ImGui::SliderFloat("Grass Threshold", &m_grassThreshold, 0.0f, 500.0f))
+                    {
+                        auto shader = m_ShaderLibrary.Get("MapShader");
+                        shader->Bind();
+                        shader->SetFloat("grassThreshold", m_grassThreshold);
+                        shader->Unbind();
+                    };
+
+                    if(ImGui::SliderFloat("Rock Threshold", &m_rockThreshold, 0.0f, 500.0f))
+                    {
+                        auto shader = m_ShaderLibrary.Get("MapShader");
+                        shader->Bind();
+                        shader->SetFloat("rockThreshold", m_rockThreshold);
+                        shader->Unbind();
+                    };
+
+                    if(ImGui::SliderFloat("Sand Threshold", &m_sandThreshold, 0.0f, 500.0f))
+                    {
+                        auto shader = m_ShaderLibrary.Get("MapShader");
+                        shader->Bind();
+                        shader->SetFloat("sandThreshold", m_sandThreshold);
+                        shader->Unbind();
+                    };
 
 
 					ImGui::EndTabItem();
@@ -326,6 +365,7 @@ public:
             const auto vertexBuffer = VertexBuffer::Create(chunk.GetVertices().data(), sizeof(float) * chunk.GetVertices().size());
             const BufferLayout layout = {
                     { ShaderDataType::Float3, "a_Position" },
+                    { ShaderDataType::Float2, "a_TexCoord" },
             };
             vertexBuffer->SetLayout(layout);
             vertexArray->AddVertexBuffer(vertexBuffer);
@@ -371,11 +411,10 @@ public:
 private:
 	
     bool lauchRegenMap = false;
-    std::mutex m_mutex;
-
 	CameraController m_cameraController;
 
     std::vector<Chunk> m_chunks;
+	std::vector<std::shared_ptr<Texture2D>> m_textures;
 	ShaderLibrary m_ShaderLibrary;
 
 	NoiseSettings m_continalnessNoiseSettings = continentalnessNoiseSettings;
@@ -397,6 +436,10 @@ private:
 
 	int m_waterHeight = 40;
 
+    float m_grassThreshold = 55.0f;
+    float m_rockThreshold = 70.0f;
+    float m_sandThreshold = 42.0f;
+
 	std::mutex mtx;
 
 };
@@ -412,7 +455,7 @@ void main()
 	Application* app = CreateApplication();
 	glfwSetWindowSize(app->GetWindow().GetNativeWindow(), 1280, 720);
 	//glfwSetInputMode(app->GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	int width, height;
 	glfwGetWindowSize(app->GetWindow().GetNativeWindow(), &width, &height);
 	app->PushLayer(new TestLayer(width, height));

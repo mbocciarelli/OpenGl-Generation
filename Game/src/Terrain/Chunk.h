@@ -54,7 +54,7 @@ private:
 	void GenerateVertices()
 	{
 		m_vertices.clear();
-		m_vertices.resize(width * lod * height * lod * 3);
+		m_vertices.resize(width * lod * height * lod * 5);
 
 		const float startX = x * width + x * -1.f;
 		const float startZ = z * height + z * -1.f;
@@ -63,7 +63,7 @@ private:
 		{
 			for (int x = 0; x < width * lod; ++x)
 			{
-				const size_t index = (x + z * width * lod) * 3;
+				const size_t index = (x + z * width * lod) * 5;
 
 				auto x1 = x / (float)lod + startX;
 				auto z1 = z / (float)lod + startZ;
@@ -71,6 +71,8 @@ private:
 				m_vertices[index] = x1;
 				m_vertices[index + 1] = m_heightMap[x + z * width * lod];
 				m_vertices[index + 2] = z1;
+                m_vertices[index + 3] = (float)(x1 / 10);
+                m_vertices[index + 4] = (float)(z1 / 10);
 			}
 		}
 	}

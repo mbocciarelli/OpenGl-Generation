@@ -19,8 +19,9 @@ Texture2D::Texture2D(uint32_t width, uint32_t height) : m_Width(width), m_Height
 	glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
 }
 
-Texture2D::Texture2D(const std::string& path)
-	: m_Path(path)
+Texture2D::Texture2D(const std::string& name, const std::string& path)
+	: m_Name(name)
+    , m_Path(path)
 {
 	int width, height, channels;
 	stbi_set_flip_vertically_on_load(1);
