@@ -18,7 +18,6 @@
 #include "src/Terrain/Chunk.h"
 #include <glm/gtc/type_ptr.hpp>
 #include "src/Terrain/Water/Water.h"
-
 class TestLayer : public Layer
 {
 public:
@@ -29,47 +28,7 @@ public:
 
 		GenerateChunks();
 		GenerateWater();
-
-        /*std::queue<Chunk> m_queueChunks;
-        std::vector<std::thread> m_threads;
-
-        for (int x = 0; x < m_chunkSizeX; ++x) {
-            for (int z = 0; z < m_chunkSizeZ; ++z) {
-                Chunk chunk { x, z, m_mapSize, m_mapSize };
-                m_queueChunks.push(chunk);
-            }
-        }
-
-        for(int i = 0; i < nbrThreads; ++i)
-        {
-            m_threads.emplace_back([&](){
-                while(!m_queueChunks.empty())
-                {
-                    m_mutex.lock();
-                    auto& chunk = m_queueChunks.front();
-                    m_queueChunks.pop();
-                    m_mutex.unlock();
-
-                    std::cout << "Generating chunk: " << chunk.x << " " << chunk.z << std::endl;
-                    GenerateChunk(chunk, true);
-
-                    m_mutex.lock();
-                    m_chunks.push_back(chunk);
-                    m_mutex.unlock();
-                }
-            });
-        }
-
-        for(auto& thread : m_threads)
-        {
-            thread.join();
-        }
-
-        for(auto& chunk : m_chunks)
-        {
-            RegenerationVerticesIndices(chunk, chunk.vertices, chunk.indices, true);
-        }*/
-
+		
         m_ShaderLibrary.Load("MapShader", "./assets/shaders/vertexShader.glsl", "./assets/shaders/fragmentShader.glsl");
 
 		m_ShaderLibrary.Load("WaterShader", "./assets/shaders/Water/vertexShader.glsl", "./assets/shaders/Water/fragmentShader.glsl");
@@ -114,6 +73,7 @@ public:
 
 		bool mapHasBeenUpdated = false;
 		bool sizeHasChanged = false;
+		bool waterHeightUpdated = false;
 
 		{
 			ImGui::Begin("Debug");
@@ -156,7 +116,7 @@ public:
 					sizeHasChanged |= ImGui::SliderInt("Chunk LOD", &m_lod, 1, 10);
 					mapHasBeenUpdated |= sizeHasChanged;
 
-					mapHasBeenUpdated |= ImGui::SliderInt("Water Height", &m_waterHeight, 0, 100);
+					waterHeightUpdated |= ImGui::SliderInt("Water Height", &m_waterHeight, 0, 100);
 
 
 					ImGui::EndTabItem();
@@ -320,36 +280,13 @@ public:
 
 		 if (m_generateMap && mapHasBeenUpdated)
          {
-             /*std::queue<Chunk*> m_queueChunks;
-             std::vector<std::thread> m_threads;*/
-
 			 GenerateChunks();
 			 GenerateWater();
-			 //m_continalnessNoiseHeightMap = HeightMap{ 500,500,0,0, m_lod, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap };
-			 //m_continalnessNoiseHeightMap.CreateHeightMapTexture();
-
-             /*for(int i = 0; i < nbrThreads; ++i)
-             {
-                 m_threads.emplace_back([&](){
-                     while(!m_queueChunks.empty())
-                     {
-                         m_mutex.lock();
-                         auto chunk = *m_queueChunks.front();
-                         m_queueChunks.pop();
-                         m_mutex.unlock();
-
-                         std::cout << "Generating chunk: " << chunk.x << " " << chunk.z << std::endl;
-                         GenerateChunk(chunk, chunk.vertices, chunk.indices, sizeHasChanged);
-                     }
-                 });
-             }
-
-             for(auto& thread : m_threads)
-                 thread.join();
-
-             for(auto& chunk : m_chunks)
-                 RegenerationVerticesIndices(chunk, chunk.vertices, chunk.indices, sizeHasChanged);*/
          }
+		 if (waterHeightUpdated)
+		 {
+			 GenerateWater();
+		 }
 
 	}
 
@@ -399,9 +336,24 @@ public:
 	void GenerateChunks()
 	{
 		m_chunks.clear();
+		std::vector<std::thread> threads;
+
 		for (int x = 0; x < m_nbChunksX; ++x)
+		{
 			for (int z = 0; z < m_nbChunksZ; ++z)
-				m_chunks.emplace_back(Chunk{ x, z, m_chunkSize, m_chunkSize, m_lod, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap });
+			{
+				threads.emplace_back([this, x, z] {
+					Chunk newChunk{ x, z, m_chunkSize, m_chunkSize, m_lod, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap };
+					std::unique_lock<std::mutex> lock(mtx);
+					m_chunks.emplace_back(std::move(newChunk));
+					lock.unlock();
+					});
+			}
+		}
+
+		for (auto& thread : threads) {
+			thread.join();
+		}
 
 		for (auto& chunk : m_chunks) {
 			GenerateChunk(chunk, true);
@@ -444,6 +396,8 @@ private:
 	int m_nbChunksZ;
 
 	int m_waterHeight = 40;
+
+	std::mutex mtx;
 
 };
 
