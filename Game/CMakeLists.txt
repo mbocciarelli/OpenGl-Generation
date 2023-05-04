@@ -13,12 +13,10 @@ file(GLOB_RECURSE sources
 )
 
 # Add all the files in the assets folder to the assets variable
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+file(COPY ${CMAKE_CURRENT_LIST_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 # Add the sources to the executable
 add_executable(${GAME_TARGET_NAME} ${sources})
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ProceduralGeneration)
 
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(${GAME_TARGET_NAME} PRIVATE imgui::imgui)

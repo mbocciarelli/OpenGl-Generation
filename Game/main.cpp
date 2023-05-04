@@ -17,16 +17,19 @@
 #include <thread>
 #include "src/Terrain/Chunk.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "src/Terrain/Water/Water.h"
 
 class TestLayer : public Layer
 {
 public:
-	TestLayer(int width, int height) : Layer("TestLayer"), m_cameraController(45.f, (float)width / float(height), 0.1f, 1000.f)
+	TestLayer(int width, int height) : Layer("TestLayer"), m_cameraController(45.f, (float)width / float(height), 0.1f, 1000.f), m_nbChunksX(5), m_nbChunksZ(5)
 	{
 		m_cameraController.GetCamera().SetPosition({ -37.5531f, 71.7751f, 6.45213f });
 		m_cameraController.GetCamera().SetYaw(33.f);
 
 		GenerateChunks();
+		GenerateWater();
+
         /*std::queue<Chunk> m_queueChunks;
         std::vector<std::thread> m_threads;
 
@@ -69,6 +72,8 @@ public:
 
         m_ShaderLibrary.Load("MapShader", "./assets/shaders/vertexShader.glsl", "./assets/shaders/fragmentShader.glsl");
 
+		m_ShaderLibrary.Load("WaterShader", "./assets/shaders/Water/vertexShader.glsl", "./assets/shaders/Water/fragmentShader.glsl");
+
         auto shader = m_ShaderLibrary.Get("MapShader");
 
         shader->Bind();
@@ -89,14 +94,16 @@ public:
 
 		Renderer::BeginScene(m_cameraController.GetCamera());
 
-		const auto textureShader = m_ShaderLibrary.Get("MapShader");
-
+		const auto mapShader = m_ShaderLibrary.Get("MapShader");
+		const auto waterShader = m_ShaderLibrary.Get("WaterShader");
 		glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(0.f), glm::vec3(0.5f, 1.0f, 0.0f));
 
 		for (auto& chunk: m_chunks)
         {
-            Renderer::Submit(textureShader, chunk.GetVertexArray(), model);
+            Renderer::Submit(mapShader, chunk.GetVertexArray(), model);
         }
+
+		Renderer::Submit(waterShader, m_water.GetVertexArray(), model);
 
 		Renderer::EndScene();
 	}
@@ -149,6 +156,9 @@ public:
 					sizeHasChanged |= ImGui::SliderInt("Chunk LOD", &m_lod, 1, 10);
 					mapHasBeenUpdated |= sizeHasChanged;
 
+					mapHasBeenUpdated |= ImGui::SliderInt("Water Height", &m_waterHeight, 0, 100);
+
+
 					ImGui::EndTabItem();
 				}
 
@@ -192,7 +202,7 @@ public:
 
 								ImGui::PushItemWidth(-1);
 
-								// Draw the height input box for this row
+								// Draw the z input box for this row
 								mapHasBeenUpdated |= ImGui::InputFloat("##Height", &m_continalnessNoiseSettings.splinePoints[i].height);
 
 								ImGui::PopItemWidth();
@@ -265,7 +275,7 @@ public:
 
 								ImGui::PushItemWidth(-1);
 
-								// Draw the height input box for this row
+								// Draw the z input box for this row
 								mapHasBeenUpdated |= ImGui::InputFloat("##Height", &m_erosionNoiseSettings.splinePoints[i].height);
 
 								ImGui::PopItemWidth();
@@ -314,6 +324,7 @@ public:
              std::vector<std::thread> m_threads;*/
 
 			 GenerateChunks();
+			 GenerateWater();
 			 //m_continalnessNoiseHeightMap = HeightMap{ 500,500,0,0, m_lod, m_continalnessNoiseSettings, m_erosionNoiseSettings, m_blendNoiseMap };
 			 //m_continalnessNoiseHeightMap.CreateHeightMapTexture();
 
@@ -397,6 +408,11 @@ public:
 		}
 	}
 
+	void GenerateWater()
+	{
+		m_water = Water(m_nbChunksX * (m_chunkSize - 1), m_nbChunksZ * (m_chunkSize - 1), m_waterHeight);
+	}
+
 private:
 	
     bool lauchRegenMap = false;
@@ -419,11 +435,15 @@ private:
 	HeightMap m_continalnessNoiseHeightMap;
 	HeightMap m_erosionNoiseHeightMap;
 
+	Water m_water;
+
     int m_chunkSize = 16;
 	int m_lod = 1;
 
-	int m_nbChunksX = 20;
-	int m_nbChunksZ = 20;
+	int m_nbChunksX;
+	int m_nbChunksZ;
+
+	int m_waterHeight = 40;
 
 };
 
@@ -438,7 +458,7 @@ void main()
 	Application* app = CreateApplication();
 	glfwSetWindowSize(app->GetWindow().GetNativeWindow(), 1280, 720);
 	//glfwSetInputMode(app->GetWindow().GetNativeWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	int width, height;
 	glfwGetWindowSize(app->GetWindow().GetNativeWindow(), &width, &height);
 	app->PushLayer(new TestLayer(width, height));
